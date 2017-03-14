@@ -1,46 +1,95 @@
 package net.hydrotekz.sync.sqlite;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Statement;
+
+import org.apache.commons.dbcp2.BasicDataSource;
 
 import net.hydrotekz.sync.utils.Printer;
 
 public class DbConnector {
 
-	public static Connection createConnection(String path){
-		Connection c = null;
+	public static BasicDataSource loadDataSource(String path){
+		BasicDataSource dataSource = null;
 		try {
-			Class.forName("org.sqlite.JDBC");
-			c = DriverManager.getConnection("jdbc:sqlite:" + path);
+//			Class.forName("org.sqlite.JDBC");
+			
+			dataSource = new BasicDataSource();
+			dataSource.setDriverClassName("org.sqlite.JDBC");
+			dataSource.setUrl("jdbc:sqlite:" + path);
+			System.out.println("Data source launched.");
 
 		} catch ( Exception e ) {
 			Printer.log(e.getClass().getName() + ": " + e.getMessage());
 			System.exit(0);
 		}
-		System.out.println("Opened database successfully.");
-		return c;
+		
+		return dataSource;
 	}
 
-	public static void createIndexTable(Connection c){
+	public static void createTables(Connection c){
 		Statement stmt = null;
 		try {
 			stmt = c.createStatement();
-			String sql = "CREATE TABLE IF NOT EXISTS files (" +
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS elements (" +
 					"path text not null, " + 
-					"filesize int not null, " + 
-					"status text not null, " + 
-					"lastmodified long not null, " +
-					"filehash text )";
-			stmt.executeUpdate(sql);
+					"filesize signed bigint, " + 
+					"status text not null, " + // Synced or unsynced
+					"lastmodified signed bigint not null, " +
+					"filehash text )");
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS action (" +
+					"path text not null, " +
+					"command int not null, " + // Command >>> delete
+					"time signed bigint not null )");
 			stmt.close();
 			c.close();
+			System.out.println("Tables handled successfully.");
 
 		} catch ( Exception e ) {
 			Printer.log(e.getClass().getName() + ": " + e.getMessage());
 			Printer.log(e);
 			System.exit(0);
 		}
-		System.out.println("Index table created successfully.");
+	}
+
+	public static void executeCommand(String cmd, Connection c){
+		try {
+			Statement s = c.createStatement();
+			s.executeUpdate(cmd);
+			s.close();
+
+		} catch (Exception ex){
+			Printer.log(ex);
+		}
+	}
+
+	public static long getLong(String output, String command, Connection conn){
+		try {
+			PreparedStatement ps = conn.prepareStatement(command);
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				long result = rs.getLong(output);
+				return result;
+			}
+		} catch (Exception e) {
+			Printer.log(e);
+		}
+		return 0;
+	}
+
+	public static String getString(String output, String command, Connection conn){
+		try {
+			PreparedStatement ps = conn.prepareStatement(command);
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				String result = rs.getString(output);
+				return result;
+			}
+		} catch (Exception e) {
+			Printer.log(e);
+		}
+		return null;
 	}
 }

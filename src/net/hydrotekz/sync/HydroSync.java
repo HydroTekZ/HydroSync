@@ -11,6 +11,8 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.dbcp2.BasicDataSource;
+
 import net.hydrotekz.sync.config.MainConfig;
 import net.hydrotekz.sync.sqlite.DbConnector;
 import net.hydrotekz.sync.utils.Address;
@@ -48,22 +50,32 @@ public class HydroSync {
 				}
 
 				// Create SQL connection for database
-				File dbFile = new File(intel.getAbsolutePath() + File.separator + "sqlite.db");
-				Connection database = DbConnector.createConnection(dbFile.getAbsolutePath());
-				DbConnector.createIndexTable(database);
+				BasicDataSource database = null;
+				try {
+					File dbFile = new File(intel.getAbsolutePath() + File.separator + "data.db");
+					database = DbConnector.loadDataSource(dbFile.getAbsolutePath());
+					DbConnector.createTables(database.getConnection());
+
+				} catch (Exception ex){
+					Printer.log(ex);
+					Printer.log("Failed create SQL connection successfully.");
+				}
 
 				// Configurate peers
 				List<Address> peers = new ArrayList<Address>();
-				
+
 				String address = cfgBox.getTracker();
 				if (!address.contains(":")) address += ":1093";
 				String[] split = address.split(":");
 				Address tracker = new Address(split[0], Integer.parseInt(split[1]));
-				
+
 				peers.add(tracker);
-				
+
 				// Create the object
 				SyncBox syncBox = new SyncBox(name, file, database, peers);
+
+				// Index
+				Indexer.startIndex(syncBox);
 			}
 		}
 	}
