@@ -45,11 +45,13 @@ public class Indexer {
 
 	// Index file info
 	private static void indexFile(File file, SyncBox syncBox) throws Exception {
-
 		// Load variables
 		Connection c = syncBox.getSqlConn();
-		
-		String localPath = file.getAbsolutePath();
+		if (c.isClosed()){
+			c = syncBox.getDataSource().getConnection();
+			syncBox.setSqlConn(c);
+		}
+
 		long fileSize = file.length();
 		String fileHash = null;
 
@@ -60,6 +62,7 @@ public class Indexer {
 		long lastModified = attr.lastModifiedTime().toMillis();
 
 		// Check against database
+		Printer.log(path);
 		if (!DbIndexHandler.doesExist(path, c)){
 			DbIndexHandler.addFile(path, fileSize, "synced", lastModified, fileHash, c);
 		}

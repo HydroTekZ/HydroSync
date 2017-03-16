@@ -11,12 +11,14 @@ public class SyncBox {
 	private String name;
 	private File folder;
 	private BasicDataSource dataSource;
+	private Connection sql;
 	private List<Address> peers;
 
-	public SyncBox (String name, File folder, BasicDataSource dataSource, List<Address> peers){
+	public SyncBox (String name, File folder, BasicDataSource dataSource, Connection sql, List<Address> peers){
 		this.name = name;
 		this.folder = folder;
 		this.dataSource = dataSource;
+		this.sql = sql;
 		this.peers = peers;
 	}
 
@@ -32,8 +34,12 @@ public class SyncBox {
 		return dataSource;
 	}
 
-	public Connection getSqlConn() throws Exception {
-		return dataSource.getConnection();
+	public Connection getSqlConn() {
+		return sql;
+	}
+	
+	public void setSqlConn(Connection to) {
+		sql = to;
 	}
 
 	public List<Address> getPeers(){
@@ -44,7 +50,6 @@ public class SyncBox {
 		String localPath = file.getAbsolutePath();
 		String syncRoot = folder.getAbsolutePath();
 		String path = localPath.replace(syncRoot + File.separator, "");
-		Printer.log(syncRoot + "\n" + localPath + "\nDEBUG: " + path);
 		return path;
 	}
 

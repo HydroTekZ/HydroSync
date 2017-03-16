@@ -51,10 +51,12 @@ public class HydroSync {
 
 				// Create SQL connection for database
 				BasicDataSource database = null;
+				Connection sqlConn = null;
 				try {
 					File dbFile = new File(intel.getAbsolutePath() + File.separator + "data.db");
 					database = DbConnector.loadDataSource(dbFile.getAbsolutePath());
-					DbConnector.createTables(database.getConnection());
+					sqlConn = database.getConnection();
+					DbConnector.createTables(sqlConn);
 
 				} catch (Exception ex){
 					Printer.log(ex);
@@ -72,7 +74,7 @@ public class HydroSync {
 				peers.add(tracker);
 
 				// Create the object
-				SyncBox syncBox = new SyncBox(name, file, database, peers);
+				SyncBox syncBox = new SyncBox(name, file, database, sqlConn, peers);
 
 				// Index
 				Indexer.startIndex(syncBox);

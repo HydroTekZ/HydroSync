@@ -14,8 +14,8 @@ public class DbConnector {
 	public static BasicDataSource loadDataSource(String path){
 		BasicDataSource dataSource = null;
 		try {
-//			Class.forName("org.sqlite.JDBC");
-			
+			//			Class.forName("org.sqlite.JDBC");
+
 			dataSource = new BasicDataSource();
 			dataSource.setDriverClassName("org.sqlite.JDBC");
 			dataSource.setUrl("jdbc:sqlite:" + path);
@@ -25,7 +25,7 @@ public class DbConnector {
 			Printer.log(e.getClass().getName() + ": " + e.getMessage());
 			System.exit(0);
 		}
-		
+
 		return dataSource;
 	}
 
@@ -54,39 +54,30 @@ public class DbConnector {
 		}
 	}
 
-	public static void executeCommand(String cmd, Connection c){
+	public static long getLong(String output, PreparedStatement ps){
 		try {
-			Statement s = c.createStatement();
-			s.executeUpdate(cmd);
-			s.close();
-
-		} catch (Exception ex){
-			Printer.log(ex);
-		}
-	}
-
-	public static long getLong(String output, String command, Connection conn){
-		try {
-			PreparedStatement ps = conn.prepareStatement(command);
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				long result = rs.getLong(output);
+				ps.close();
 				return result;
 			}
+			ps.close();
 		} catch (Exception e) {
 			Printer.log(e);
 		}
 		return 0;
 	}
 
-	public static String getString(String output, String command, Connection conn){
+	public static String getString(String output, PreparedStatement ps) throws Exception {
 		try {
-			PreparedStatement ps = conn.prepareStatement(command);
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				String result = rs.getString(output);
+				ps.close();
 				return result;
 			}
+			ps.close();
 		} catch (Exception e) {
 			Printer.log(e);
 		}

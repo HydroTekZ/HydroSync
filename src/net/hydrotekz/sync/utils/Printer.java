@@ -26,7 +26,7 @@ public class Printer {
 			out.newLine();
 			out.close();
 
-			System.out.println("\n" + getClock() + ": " + message);
+			System.out.println(getClock() + ": " + message);
 
 		} catch (IOException e) {
 			e.printStackTrace();

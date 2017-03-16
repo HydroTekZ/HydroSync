@@ -21,6 +21,7 @@ public class SocketConnection implements Runnable {
 			String text;
 			while((text = in.readUTF()) != null) {
 				try {
+					
 
 				} catch (Exception e){
 					Printer.log(e);
