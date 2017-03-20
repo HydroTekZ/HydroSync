@@ -4,24 +4,32 @@ import java.io.DataOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
+import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.Printer;
+import net.hydrotekz.sync.utils.SyncBox;
 
 public class SocketClient {
+	
+	private SyncBox syncBox;
+	private String ip = null;
+	private int port = 22222;
+	
+	public SocketClient(SyncBox syncBox, Address peer){
+		this.syncBox = syncBox;
+		this.ip = peer.getIp();
+		this.port = peer.getPort();
+	}
 
-	public static Socket socketClient;
-	public static String ip = null;
-	public static int port = 22222;
-
+	private static Socket socketClient;
 	private static long recon = 0;
 
-	public static void connect(){
+	public void connect(){
 		try {
 			socketClient = new Socket();
 			socketClient.connect(new InetSocketAddress(ip, port), 30000);
 			SocketConnection connection = new SocketConnection(socketClient);
 			Thread t = new Thread(connection);
 			t.start();
-			sendMessage("", true);
 			Printer.log("Successfully connected to socket server!");
 
 		} catch (Exception e) {
@@ -29,7 +37,7 @@ public class SocketClient {
 		}
 	}
 
-	public static void reconnect(){
+	public void reconnect(){
 		try {
 			if (recon == 0 || System.currentTimeMillis() > recon){
 				socketClient = new Socket();
@@ -37,7 +45,6 @@ public class SocketClient {
 				SocketConnection connection = new SocketConnection(socketClient);
 				Thread t = new Thread(connection);
 				t.start();
-				sendMessage("", true);
 				Printer.log("Successfully reconnected to socket server!");
 				recon = System.currentTimeMillis()+30000;
 			}
@@ -47,15 +54,15 @@ public class SocketClient {
 		}
 	}
 
-	public static boolean isConnection(){
+	public boolean isConnected(){
 		if (socketClient != null && !socketClient.isClosed() && socketClient.isConnected()){
 			return true;
 		} else return false;
 	}
 
-	public static boolean sendMessage(String msg, boolean print){
+	public boolean sendMessage(String msg, boolean print){
 		try {
-			if (isConnection()){
+			if (isConnected()){
 				DataOutputStream os = new DataOutputStream(socketClient.getOutputStream());
 				if (os != null && !socketClient.isInputShutdown()){
 					

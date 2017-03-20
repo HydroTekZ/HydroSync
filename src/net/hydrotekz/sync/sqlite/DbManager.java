@@ -4,12 +4,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import net.hydrotekz.sync.utils.Printer;
 
-public class DbConnector {
+public class DbManager {
 
 	public static BasicDataSource loadDataSource(String path){
 		BasicDataSource dataSource = null;
@@ -33,16 +35,26 @@ public class DbConnector {
 		Statement stmt = null;
 		try {
 			stmt = c.createStatement();
+
+			// Index database
 			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS elements (" +
 					"path text not null, " + 
 					"filesize signed bigint, " + 
-					"status text not null, " + // Synced or unsynced
+					"status text not null, " + // Deleted or syncing
 					"lastmodified signed bigint not null, " +
 					"filehash text )");
-			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS action (" +
-					"path text not null, " +
-					"command int not null, " + // Command >>> delete
+
+			// Status database
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS status (" +
+					"key text not null, " +
+					"value int not null, " +
 					"time signed bigint not null )");
+
+			// TODO: Peers database
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS peers (" +
+					"address text not null, " +
+					"lastseen signed bigint not null )");
+
 			stmt.close();
 			c.close();
 			System.out.println("Tables handled successfully.");
@@ -78,6 +90,22 @@ public class DbConnector {
 				return result;
 			}
 			ps.close();
+		} catch (Exception e) {
+			Printer.log(e);
+		}
+		return null;
+	}
+
+	public static List<String> getStringList(String output, PreparedStatement ps){
+		try {
+			List<String> list = new ArrayList<String>();
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				list.add(rs.getString(output));
+			}
+			ps.close();
+			return list;
+
 		} catch (Exception e) {
 			Printer.log(e);
 		}

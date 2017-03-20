@@ -14,7 +14,8 @@ import java.util.List;
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import net.hydrotekz.sync.config.MainConfig;
-import net.hydrotekz.sync.sqlite.DbConnector;
+import net.hydrotekz.sync.indexing.IndexHandler;
+import net.hydrotekz.sync.sqlite.DbManager;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.CfgBox;
 import net.hydrotekz.sync.utils.Printer;
@@ -29,55 +30,59 @@ public class HydroSync {
 		// Load sync boxes
 		if (MainConfig.boxes != null){
 			for (CfgBox cfgBox : MainConfig.boxes){
-				String name = cfgBox.getName();
-				String path = cfgBox.getPath();
-				File file = new File(path);
+				// Start new thread
+				Runnable r = new Runnable() {
+					public void run() {
+						String name = cfgBox.getName();
+						String path = cfgBox.getPath();
+						File file = new File(path);
 
-				// Intel directory
-				File intel = new File(file.getAbsolutePath() + File.separator + ".box");
-				if (!intel.exists()){
-					// Make directory
-					intel.mkdir();
+						// Intel directory
+						File intel = new File(file.getAbsolutePath() + File.separator + ".box");
+						if (!intel.exists()){
+							// Make directory
+							intel.mkdir();
 
-					// Hide directory
-					try {
-						Path intelPath = intel.toPath();
-						Files.setAttribute(intelPath, "dos:hidden", true);
+							// Hide directory
+							try {
+								Path intelPath = intel.toPath();
+								Files.setAttribute(intelPath, "dos:hidden", true);
 
-					} catch (IOException e) {
-						Printer.log("Failed to hide folder.");
+							} catch (IOException e) {
+								Printer.log("Failed to hide folder.");
+							}
+						}
+
+						// Create SQL connection for database
+						BasicDataSource database = null;
+						Connection sqlConn = null;
+						try {
+							File dbFile = new File(intel.getAbsolutePath() + File.separator + "data.db");
+							database = DbManager.loadDataSource(dbFile.getAbsolutePath());
+							sqlConn = database.getConnection();
+							DbManager.createTables(sqlConn);
+
+						} catch (Exception ex){
+							Printer.log(ex);
+							Printer.log("Failed create SQL connection successfully.");
+						}
+
+						// Configurate peers
+						List<Address> peers = new ArrayList<Address>();
+
+						String tracker = cfgBox.getTracker();
+						Address address = Address.toAddress(tracker);
+
+						peers.add(address);
+
+						// Create the object
+						SyncBox syncBox = new SyncBox(name, file, database, sqlConn, peers);
+
+						// Index
+						IndexHandler.enableIndexing(syncBox);
 					}
-				}
-
-				// Create SQL connection for database
-				BasicDataSource database = null;
-				Connection sqlConn = null;
-				try {
-					File dbFile = new File(intel.getAbsolutePath() + File.separator + "data.db");
-					database = DbConnector.loadDataSource(dbFile.getAbsolutePath());
-					sqlConn = database.getConnection();
-					DbConnector.createTables(sqlConn);
-
-				} catch (Exception ex){
-					Printer.log(ex);
-					Printer.log("Failed create SQL connection successfully.");
-				}
-
-				// Configurate peers
-				List<Address> peers = new ArrayList<Address>();
-
-				String address = cfgBox.getTracker();
-				if (!address.contains(":")) address += ":1093";
-				String[] split = address.split(":");
-				Address tracker = new Address(split[0], Integer.parseInt(split[1]));
-
-				peers.add(tracker);
-
-				// Create the object
-				SyncBox syncBox = new SyncBox(name, file, database, sqlConn, peers);
-
-				// Index
-				Indexer.startIndex(syncBox);
+				};
+				new Thread(r).start();
 			}
 		}
 	}

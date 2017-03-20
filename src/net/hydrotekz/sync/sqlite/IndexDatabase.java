@@ -2,12 +2,19 @@ package net.hydrotekz.sync.sqlite;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.util.List;
 
-public class DbIndexHandler {
-
+public class IndexDatabase {
+	
 	/*
-	 * Registers file
+	 * Colums:			Path	|	FileSize	|	Status	|	LastModified	|	FileHash
+	 * File --> 		*path*	-	  1024		-	synced	- 		2017 		- 	  null
+	 * Folder --> 		*path*  - 	   (-1) 	-	synced	- 		2017 		- 	  null
+	 * Deleted file --> *path*  - 	  1024	 	-	deleted - 		2017 		- 	  null
+	 * Downloading -->  *path*  - 	  1024	 	-	syncing - 		  0 		- 	  null
 	 */
+
+	// Registers file
 
 	public static void addFile(String path, long fileSize, String status, long lastModified, String fileHash, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("INSERT INTO `elements` (path, filesize, status, lastmodified, filehash) VALUES "
@@ -21,9 +28,7 @@ public class DbIndexHandler {
 		ps.close();
 	}
 
-	/*
-	 * Changes values
-	 */
+	// Changes values
 
 	public static void updateFileSize(String path, long fileSize, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("UPDATE `elements` SET filesize=? "
@@ -43,10 +48,10 @@ public class DbIndexHandler {
 		ps.close();
 	}
 
-	public static void updateLastModified(String path, long fileSize, Connection c) throws Exception {
-		PreparedStatement ps = c.prepareStatement("UPDATE `elements` SET filesize=? "
+	public static void updateLastModified(String path, long lastModified, Connection c) throws Exception {
+		PreparedStatement ps = c.prepareStatement("UPDATE `elements` SET lastmodified=? "
 				+ "WHERE path=?");
-		ps.setLong(1, fileSize);
+		ps.setLong(1, lastModified);
 		ps.setString(2, path);
 		ps.execute();
 		ps.close();
@@ -61,46 +66,48 @@ public class DbIndexHandler {
 		ps.close();
 	}
 
-	/*
-	 * Check if exists
-	 */
+	// Check if exists
 
 	public static boolean doesExist(String path, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("SELECT `path` FROM `elements` WHERE path=?");
 		ps.setString(1, path);
-		String result = DbConnector.getString("path", ps);
+		String result = DbManager.getString("path", ps);
 		if (result == null) return false; else return true;
 	}
 
-	/*
-	 * Get information
-	 */
+	// Get information
+	
+	public static List<String> getElements(Connection c) throws Exception {
+		PreparedStatement ps = c.prepareStatement("SELECT `path` FROM `elements`");
+		List<String> result = DbManager.getStringList("path", ps);
+		return result;
+	}
 
 	public static String getStatus(String path, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("SELECT `status` FROM `elements` WHERE path=?");
 		ps.setString(1, path);
-		String result = DbConnector.getString("status", ps);
+		String result = DbManager.getString("status", ps);
 		return result;
 	}
 
 	public static long getFileSize(String path, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("SELECT `filesize` FROM `elements` WHERE path=?");
 		ps.setString(1, path);
-		long result = DbConnector.getLong("filesize", ps);
+		long result = DbManager.getLong("filesize", ps);
 		return result;
 	}
 
 	public static long getLastModified(String path, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("SELECT `lastmodified` FROM `elements` WHERE path=?");
 		ps.setString(1, path);
-		long result = DbConnector.getLong("lastmodified", ps);
+		long result = DbManager.getLong("lastmodified", ps);
 		return result;
 	}
 
 	public static String getFileHash(String path, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("SELECT `filehash` FROM `elements` WHERE path=?");
 		ps.setString(1, path);
-		String result = DbConnector.getString("filehash", ps);
+		String result = DbManager.getString("filehash", ps);
 		return result;
 	}
 }

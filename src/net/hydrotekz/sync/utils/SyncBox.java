@@ -34,12 +34,11 @@ public class SyncBox {
 		return dataSource;
 	}
 
-	public Connection getSqlConn() {
+	public Connection getSqlConn() throws Exception {
+		if (sql.isClosed()){
+			sql = dataSource.getConnection();
+		}
 		return sql;
-	}
-	
-	public void setSqlConn(Connection to) {
-		sql = to;
 	}
 
 	public List<Address> getPeers(){
@@ -50,7 +49,7 @@ public class SyncBox {
 		String localPath = file.getAbsolutePath();
 		String syncRoot = folder.getAbsolutePath();
 		String path = localPath.replace(syncRoot + File.separator, "");
+		if (file.isDirectory()) path += File.separator;
 		return path;
 	}
-
 }
