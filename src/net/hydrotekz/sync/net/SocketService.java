@@ -1,8 +1,13 @@
 package net.hydrotekz.sync.net;
 
-import java.io.*;
+import java.io.DataInputStream;
 import java.net.*;
 
+import org.json.simple.JSONObject;
+
+import net.hydrotekz.sync.HydroSync;
+import net.hydrotekz.sync.utils.Address;
+import net.hydrotekz.sync.utils.JsonHandler;
 import net.hydrotekz.sync.utils.Printer;
 
 public class SocketService {
@@ -19,14 +24,31 @@ public class SocketService {
 			Printer.log("Listening for connections...");
 			while(!listener.isClosed()){
 				Socket socket = listener.accept();
-				SocketConnection connection = new SocketConnection(socket);
-				Thread t = new Thread(connection);
-				t.start();
-				Printer.log(socket.getRemoteSocketAddress().toString() + " connected!");
+
+				Address address = Address.toAddress(socket);
+
+				try {
+					DataInputStream stream = new DataInputStream(socket.getInputStream());
+					JSONObject auth = JsonHandler.getJson(stream.readUTF());
+					address = Address.toAddress(socket, auth.get("port"));
+
+					SocketConnection connection = new SocketConnection(socket, address);
+					Thread t = new Thread(connection);
+					t.start();
+
+					HydroSync.connections.put(address, socket);
+					Printer.log("Connected to " + address.toString() + "!");
+
+				} catch (Exception e){
+					Printer.log("Failed to authenticate " + address.toString() + "!");
+					if (!socket.isClosed()) socket.close();
+				}
 			}
 
-		} catch (IOException ioe) {
-			Printer.log("Failed to start socket service!");
+		} catch (Exception ioe) {
+			Printer.log(ioe);
+			Printer.log("Socket service failed!");
+			System.exit(0);
 		}
 	}
 
@@ -34,11 +56,8 @@ public class SocketService {
 		try {
 			if (!listener.isClosed() && listener != null){
 				listener.close();
-				Printer.log("Socket server was successfully closed!");
 			}
 
-		} catch (Exception e){
-			Printer.log("Failed to stop socket service!");
-		}	
+		} catch (Exception e){}	
 	}
 }

@@ -9,8 +9,6 @@ public class IndexHandler {
 	// Runs on startup
 	public static void enableIndexing(SyncBox syncBox){
 		try {
-			// Index 
-
 			// Do first time scan
 			if (!StatusDatabase.doesExist("FirstTimeScan", syncBox.getSqlConn())){
 				FirstTimeIndexer.executeScan(syncBox);
@@ -18,10 +16,7 @@ public class IndexHandler {
 			}
 
 			// Enable interval scan
-			else {
-				RepeatIndexer.executeIndex(syncBox);
-			}
-
+			RepeatIndexer.executeIndex(syncBox);
 
 		} catch (Exception ex){
 			Printer.log(ex);

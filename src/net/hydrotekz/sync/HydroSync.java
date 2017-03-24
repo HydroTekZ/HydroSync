@@ -2,6 +2,7 @@ package net.hydrotekz.sync;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
@@ -9,12 +10,14 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import net.hydrotekz.sync.config.MainConfig;
 import net.hydrotekz.sync.indexing.IndexHandler;
+import net.hydrotekz.sync.net.SocketHandler;
 import net.hydrotekz.sync.sqlite.DbManager;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.CfgBox;
@@ -22,6 +25,11 @@ import net.hydrotekz.sync.utils.Printer;
 import net.hydrotekz.sync.utils.SyncBox;
 
 public class HydroSync {
+
+	public static double version = 1.0;
+
+	public static HashMap<String, SyncBox> syncBoxes = new HashMap<String, SyncBox>();
+	public static HashMap<Address, Socket> connections = new HashMap<Address, Socket>();
 
 	public static void main(String[] args){
 		// Load config
@@ -77,6 +85,9 @@ public class HydroSync {
 
 						// Create the object
 						SyncBox syncBox = new SyncBox(name, file, database, sqlConn, peers);
+
+						// Create connections
+						SocketHandler.establishConnections(syncBox);
 
 						// Index
 						IndexHandler.enableIndexing(syncBox);

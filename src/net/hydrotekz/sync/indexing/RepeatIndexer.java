@@ -14,10 +14,16 @@ public class RepeatIndexer {
 	// Start indexing
 	public static void executeIndex(SyncBox syncBox) throws Exception {
 		try {
+			// Index folder
 			Printer.log("Indexing...");
 			File folder = syncBox.getFolder();
 			loopIndex(syncBox, folder);
 			Printer.log("Indexing complete!");
+
+			// TODO: Refresh sync
+			
+
+			// Continue task
 			Thread.sleep(1000*10);
 			executeIndex(syncBox);
 
