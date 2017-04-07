@@ -5,9 +5,6 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -85,6 +82,7 @@ public class HydroSync {
 
 						// Create the object
 						SyncBox syncBox = new SyncBox(name, file, database, sqlConn, peers);
+						syncBoxes.put(name, syncBox);
 
 						// Create connections
 						SocketHandler.establishConnections(syncBox);
@@ -96,19 +94,5 @@ public class HydroSync {
 				new Thread(r).start();
 			}
 		}
-	}
-
-	private void test(Path file) throws Exception {
-		BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
-
-		System.out.println("creationTime: " + attr.creationTime());
-		System.out.println("lastAccessTime: " + attr.lastAccessTime());
-		System.out.println("lastModifiedTime: " + attr.lastModifiedTime());
-
-		BasicFileAttributeView attributes = Files.getFileAttributeView(file, BasicFileAttributeView.class);
-		FileTime time = FileTime.fromMillis(attr.creationTime().toMillis());
-		attributes.setTimes(time, time, time);
-
-
 	}
 }

@@ -14,6 +14,30 @@ public class Address {
 		this.port = port;
 	}
 
+	public String getIp(){
+		return ip;
+	}
+
+	public int getPort(){
+		return port;
+	}
+
+	public InetSocketAddress toInetSocketAddress(){
+		return new InetSocketAddress(ip, port);
+	}
+
+	public String toString(){
+		return ip + ":" + port;
+	}
+
+	public boolean equals(SyncBox syncBox){
+		return syncBox.toString().equals(toString());
+	}
+
+	/*
+	 * Static
+	 */
+
 	public static Address toAddress(String address){
 		if (!address.contains(":")) address += ":1093";
 		String[] split = address.split(":");
@@ -52,21 +76,5 @@ public class Address {
 		String txt = ip.toString().replace("/", "");
 		Address address = new Address(txt, port);
 		return address;
-	}
-
-	public String getIp(){
-		return ip;
-	}
-
-	public int getPort(){
-		return port;
-	}
-
-	public InetSocketAddress toInetSocketAddress(){
-		return new InetSocketAddress(ip, port);
-	}
-
-	public String toString(){
-		return ip + ":" + port;
 	}
 }

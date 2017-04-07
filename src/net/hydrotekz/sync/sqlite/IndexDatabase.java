@@ -58,7 +58,7 @@ public class IndexDatabase {
 	}
 
 	public static void updateFileHash(String path, String fileHash, Connection c) throws Exception {
-		PreparedStatement ps = c.prepareStatement("UPDATE `elements` SET status=? "
+		PreparedStatement ps = c.prepareStatement("UPDATE `elements` SET filehash=? "
 				+ "WHERE path=?");
 		ps.setString(1, fileHash);
 		ps.setString(2, path);

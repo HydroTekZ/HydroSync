@@ -12,7 +12,7 @@ import net.hydrotekz.sync.net.SocketService;
 @SuppressWarnings("unchecked")
 public class JsonHandler {
 
-	private static JSONObject prepJson(SyncBox syncBox){
+	public static JSONObject prepJson(SyncBox syncBox){
 		JSONObject json = new JSONObject();
 
 		json.put("ver", HydroSync.version);

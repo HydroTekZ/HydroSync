@@ -16,8 +16,6 @@ public class DbManager {
 	public static BasicDataSource loadDataSource(String path){
 		BasicDataSource dataSource = null;
 		try {
-			//			Class.forName("org.sqlite.JDBC");
-
 			dataSource = new BasicDataSource();
 			dataSource.setDriverClassName("org.sqlite.JDBC");
 			dataSource.setUrl("jdbc:sqlite:" + path);

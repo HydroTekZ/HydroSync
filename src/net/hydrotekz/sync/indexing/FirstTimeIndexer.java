@@ -7,6 +7,7 @@ import net.hydrotekz.sync.crypto.Hasher;
 import net.hydrotekz.sync.sqlite.IndexDatabase;
 import net.hydrotekz.sync.utils.Printer;
 import net.hydrotekz.sync.utils.SyncBox;
+import net.hydrotekz.sync.utils.SyncFile;
 import net.hydrotekz.sync.utils.Utils;
 
 public class FirstTimeIndexer {
@@ -28,32 +29,33 @@ public class FirstTimeIndexer {
 
 	// Do the indexing
 	private static void loopIndex(SyncBox syncBox, File file) throws Exception {
-		String syncPath = syncBox.getSyncPath(file);
-		if (!syncPath.equals(".box" + File.separator)){
-			// Index element
-			indexElement(file, syncBox);
+		SyncFile syncFile = SyncFile.toSyncFile(syncBox, file);
+			if (!syncFile.ignore()){
+				// Index element
+				if (!syncFile.isRootDir())
+					indexElement(syncFile, syncBox);
 
-			// Get more files
-			if (file.isDirectory()){
-				for (File f : file.listFiles()){
-					loopIndex(syncBox, f);
+				// Get more files
+				if (file.isDirectory()){
+					for (File f : file.listFiles()){
+						loopIndex(syncBox, f);
+					}
 				}
 			}
-		}
 	}
 
 	// Index folder/file info
-	private static void indexElement(File file, SyncBox syncBox) throws Exception {
-		// Load variables
+	private static void indexElement(SyncFile syncFile, SyncBox syncBox) throws Exception {
 		Connection c = syncBox.getSqlConn();
-
+		
+		// Load variables
 		long fileSize = -1;
 		String fileHash = null;
+		File file = syncFile.getFile();
+		String path = syncFile.getSyncPath();
 
-		String path = syncBox.getSyncPath(file);
-		
 		if (IndexDatabase.doesExist(path, c)) return;
-		
+
 		long lastModified = Utils.getLastModified(file);
 
 		// If it's a file
@@ -63,7 +65,6 @@ public class FirstTimeIndexer {
 		}
 
 		// Check against database
-		Printer.log(path);
 		if (!IndexDatabase.doesExist(path, c)){
 			IndexDatabase.addFile(path, fileSize, "synced", lastModified, fileHash, c);
 		}

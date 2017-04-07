@@ -29,7 +29,7 @@ public class SocketHandler {
 				JsonHandler.sendAuth(syncBox, socket);
 			}
 		}
-		
+
 		// Start socket listener
 		Runnable r = new Runnable() {
 			public void run() {

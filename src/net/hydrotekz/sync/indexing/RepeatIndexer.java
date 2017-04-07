@@ -7,6 +7,7 @@ import net.hydrotekz.sync.crypto.Hasher;
 import net.hydrotekz.sync.sqlite.IndexDatabase;
 import net.hydrotekz.sync.utils.Printer;
 import net.hydrotekz.sync.utils.SyncBox;
+import net.hydrotekz.sync.utils.SyncFile;
 import net.hydrotekz.sync.utils.Utils;
 
 public class RepeatIndexer {
@@ -20,12 +21,12 @@ public class RepeatIndexer {
 			loopIndex(syncBox, folder);
 			Printer.log("Indexing complete!");
 
-			// TODO: Refresh sync
-			
+			// Refresh sync
+			NetworkIndexer.executeSync(syncBox.refresh());
 
 			// Continue task
-			Thread.sleep(1000*10);
-			executeIndex(syncBox);
+			Thread.sleep(1000*45);
+			executeIndex(syncBox.refresh());
 
 		} catch (Exception ex){
 			Printer.log(ex);
@@ -36,42 +37,53 @@ public class RepeatIndexer {
 
 	// Do the loop
 	private static void loopIndex(SyncBox syncBox, File file) throws Exception {
-		String syncPath = syncBox.getSyncPath(file);
-		if (!syncPath.equals(".box" + File.separator)){
+		SyncFile syncFile = SyncFile.toSyncFile(syncBox, file);
+		if (!syncFile.ignore()){
 			// Index element
-			checkElement(file, syncBox);
+			checkElement(syncFile, syncBox);
 		}
 	}
 
 	// Index element
-	private static void checkElement(File file, SyncBox syncBox) throws Exception {
+	public static void checkElement(SyncFile syncFile, SyncBox syncBox) throws Exception {
+		File file = syncFile.getFile();
+		if (file == null || !file.exists()) return;
+
 		Connection c = syncBox.getSqlConn();
-		String path = syncBox.getSyncPath(file);
+
+		String path = syncFile.getSyncPath();
 
 		long lastModified = Utils.getLastModified(file);
-		long oldLastModified = IndexDatabase.getLastModified(path, c);
+		long oldLastModified = 0;
+		String status = null;
+		if (IndexDatabase.doesExist(path, c)){
+			oldLastModified = IndexDatabase.getLastModified(path, c);
+			status = IndexDatabase.getStatus(path, c);
+		}
 
-		if (lastModified != oldLastModified){
+		if ((status != null && status.equals("deleted")) || oldLastModified == 0 || lastModified != oldLastModified){
 			long fileSize = -1;
 			String fileHash = null;
 
-			// If it's a file
-			if (file.isFile()){
-				fileSize = file.length();
-				fileHash = Hasher.getFileHash(file);
-			}
-
-			// Add/update element
-			if (!IndexDatabase.doesExist(path, c)){
-				IndexDatabase.addFile(path, fileSize, "synced", lastModified, fileHash, c);
-
-
-			} else {
+			if (!path.equals(File.separator) && !path.equals("\\") && !path.equals("/")){
+				// If it's a file
 				if (file.isFile()){
-					IndexDatabase.updateFileHash(path, fileHash, c);
-					IndexDatabase.updateFileSize(path, fileSize, c);
+					fileSize = file.length();
+					fileHash = Hasher.getFileHash(file);
 				}
-				IndexDatabase.updateLastModified(path, lastModified, c);
+
+				// Add/update element
+				if (!IndexDatabase.doesExist(path, c)){
+					IndexDatabase.addFile(path, fileSize, "synced", lastModified, fileHash, c);
+
+				} else {
+					if (file.isFile()){
+						IndexDatabase.updateFileHash(path, fileHash, c);
+						IndexDatabase.updateFileSize(path, fileSize, c);
+					}
+					IndexDatabase.updateLastModified(path, lastModified, c);
+					IndexDatabase.updateStatus(path, "synced", c);
+				}
 			}
 
 			// Add more elements to the loop

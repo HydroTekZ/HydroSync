@@ -9,6 +9,8 @@ import net.hydrotekz.sync.HydroSync;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.JsonHandler;
 import net.hydrotekz.sync.utils.Printer;
+import net.hydrotekz.sync.utils.SyncBox;
+import net.hydrotekz.sync.utils.SyncFile;
 
 public class SocketService {
 
@@ -31,15 +33,29 @@ public class SocketService {
 					DataInputStream stream = new DataInputStream(socket.getInputStream());
 					JSONObject auth = JsonHandler.getJson(stream.readUTF());
 					address = Address.toAddress(socket, auth.get("port"));
+					String cmd = (String) auth.get("cmd");
 
-					SocketConnection connection = new SocketConnection(socket, address);
-					Thread t = new Thread(connection);
-					t.start();
+					if (cmd.equals("auth")){
+						SocketConnection connection = new SocketConnection(socket, address);
+						Thread t = new Thread(connection);
+						t.start();
 
-					HydroSync.connections.put(address, socket);
-					Printer.log("Connected to " + address.toString() + "!");
+						HydroSync.connections.put(address, socket);
+						Printer.log("Connected to " + address.toString() + "!");
+
+					} else if (cmd.equals("download_file")){
+						String path = (String) auth.get("path");
+						long lastModified = (long) auth.get("lastmodified");
+						String syncName = (String) auth.get("sync");
+						long size = (long) auth.get("size");
+						String hash = (String) auth.get("hash");
+						SyncBox syncBox = SyncBox.getSyncBox(syncName);
+
+						FileDownload.downloadFile(syncBox, socket, SyncFile.toSyncFile(syncBox, path), size, lastModified, hash);
+					}
 
 				} catch (Exception e){
+					Printer.log(e);
 					Printer.log("Failed to authenticate " + address.toString() + "!");
 					if (!socket.isClosed()) socket.close();
 				}
