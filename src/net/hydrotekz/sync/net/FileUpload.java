@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.json.simple.JSONObject;
 
+import net.hydrotekz.sync.indexing.RepeatIndexer;
 import net.hydrotekz.sync.sqlite.IndexDatabase;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.JsonHandler;
@@ -35,7 +36,7 @@ public class FileUpload {
 			if (inProgress.contains(syncPath)) return;
 			inProgress.add(syncPath);
 
-			Printer.log("Uploading " + file.getName() + " to " + address.toString() + "...");
+			Printer.log("Uploading " + file.getName() + "...");
 
 			// Check for changes
 			Connection c = syncBox.getSqlConn();
@@ -43,6 +44,7 @@ public class FileUpload {
 
 			if (lastModified != Utils.getLastModified(file)){
 				Printer.log("Upload aborted, changes detected!");
+				RepeatIndexer.checkElement(syncFile, syncBox);
 				return;
 			}
 
@@ -62,7 +64,7 @@ public class FileUpload {
 
 			// Transfer file
 			FileInputStream fis = new FileInputStream(file);
-			long res = IOUtils.copyLarge(fis, dos);
+			IOUtils.copyLarge(fis, dos);
 
 			// Finish
 			dos.flush();
@@ -71,11 +73,13 @@ public class FileUpload {
 			socket.close();
 
 			Thread.sleep(100);
-			Printer.log("Upload complete! (" + res + ")");
-			inProgress.remove(syncPath);
+			Printer.log("Successfully uploaded " + file.getName() + "!");
 
 		} catch (Exception ex){
 			Printer.log("Failed to upload!");
+
+		} finally {
+			inProgress.remove(syncFile.getSyncPath());
 		}
 	}
 }

@@ -25,7 +25,7 @@ public class RepeatIndexer {
 			NetworkIndexer.executeSync(syncBox.refresh());
 
 			// Continue task
-			Thread.sleep(1000*45);
+			Thread.sleep(1000*60*5);
 			executeIndex(syncBox.refresh());
 
 		} catch (Exception ex){
@@ -64,8 +64,13 @@ public class RepeatIndexer {
 		if ((status != null && status.equals("deleted")) || oldLastModified == 0 || lastModified != oldLastModified){
 			long fileSize = -1;
 			String fileHash = null;
+			if (status != null && status.equals("deleted")){
+				if (oldLastModified > lastModified) lastModified = Utils.getLastModified(file.getParentFile());
+				else lastModified++;
+				Utils.setLastModified(file, lastModified);
+			}
 
-			if (!path.equals(File.separator) && !path.equals("\\") && !path.equals("/")){
+			if (!syncFile.isRootDir()){
 				// If it's a file
 				if (file.isFile()){
 					fileSize = file.length();

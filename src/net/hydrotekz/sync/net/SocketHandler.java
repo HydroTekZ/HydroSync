@@ -71,7 +71,7 @@ public class SocketHandler {
 				if (os != null && !socket.isInputShutdown()){
 					String utf = msg.toJSONString();
 					os.writeUTF(utf);
-					Printer.log("Sent: " + utf);
+					Thread.sleep(100);
 					return true;
 				}
 			}

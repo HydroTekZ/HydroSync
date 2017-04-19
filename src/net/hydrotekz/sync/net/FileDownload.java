@@ -29,7 +29,7 @@ public class FileDownload {
 		inProgress.add(syncPath);
 
 		try {
-			Printer.log("Downloading file... " + syncPath);
+			Printer.log("Downloading " + syncFile.getFileName() + "...");
 
 			Connection c = syncBox.getSqlConn();
 			if (!IndexDatabase.doesExist(syncPath, c)){
@@ -54,7 +54,7 @@ public class FileDownload {
 			// Transfer file
 			DataInputStream dis = new DataInputStream(socket.getInputStream());
 			FileOutputStream fos = new FileOutputStream(tmpFile);
-			long res = IOUtils.copyLarge(dis, fos);
+			IOUtils.copyLarge(dis, fos);
 
 			// Finish
 			fos.flush();
@@ -62,22 +62,20 @@ public class FileDownload {
 			fos.close();
 			socket.close();
 
-			Printer.log("Finalizing download... (" + res + ")");
-
 		} catch (Exception ex){
 			Printer.log(ex);
-			Printer.log("Download failed!");
 
 		} finally {
 			if (tmpFile.length() == size){
 				try {
 					// Finalize
+					toFile.mkdirs();
 					FileUtils.moveFile(tmpFile, toFile);
 					Utils.setLastModified(toFile, lastModified);
 					Connection c = syncBox.getSqlConn();
 					IndexDatabase.updateStatus(syncPath, "synced", c);
 					Thread.sleep(250);
-					Printer.log("Download complete!");
+					Printer.log("Successfully downloaded " + syncFile.getFileName() + "!");
 
 				} catch (Exception e){
 					Printer.log(e);
