@@ -23,7 +23,7 @@ public class SocketService {
 		try {
 			listener = new ServerSocket(port);
 
-			Printer.log("Listening for connections...");
+			Printer.log("Socket server started.");
 			while(!listener.isClosed()){
 				Socket socket = listener.accept();
 
@@ -55,7 +55,7 @@ public class SocketService {
 					}
 
 				} catch (Exception e){
-					Printer.log(e);
+					Printer.debug(e);
 					Printer.log("Failed to authenticate " + address.toString() + "!");
 					if (!socket.isClosed()) socket.close();
 				}

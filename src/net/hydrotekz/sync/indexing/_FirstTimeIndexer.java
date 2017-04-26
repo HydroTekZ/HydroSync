@@ -10,7 +10,7 @@ import net.hydrotekz.sync.utils.SyncBox;
 import net.hydrotekz.sync.utils.SyncFile;
 import net.hydrotekz.sync.utils.Utils;
 
-public class FirstTimeIndexer {
+public class _FirstTimeIndexer {
 
 	// Index starter
 	public static void executeScan(SyncBox syncBox){

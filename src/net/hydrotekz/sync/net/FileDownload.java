@@ -69,11 +69,16 @@ public class FileDownload {
 			if (tmpFile.length() == size){
 				try {
 					// Finalize
-					toFile.mkdirs();
-					FileUtils.moveFile(tmpFile, toFile);
-					Utils.setLastModified(toFile, lastModified);
 					Connection c = syncBox.getSqlConn();
+
+					toFile.getParentFile().mkdirs();
+					FileUtils.moveFile(tmpFile, toFile);
+
+					IndexDatabase.updateFileHash(syncPath, hash, c);
+					IndexDatabase.updateFileSize(syncPath, size, c);
+					Utils.setLastModified(toFile, lastModified);
 					IndexDatabase.updateStatus(syncPath, "synced", c);
+
 					Thread.sleep(250);
 					Printer.log("Successfully downloaded " + syncFile.getFileName() + "!");
 

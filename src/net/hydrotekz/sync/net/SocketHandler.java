@@ -2,7 +2,6 @@ package net.hydrotekz.sync.net;
 
 import java.io.DataOutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.json.simple.JSONObject;
@@ -18,14 +17,18 @@ public class SocketHandler {
 	public static void establishConnections(SyncBox syncBox){
 		// Connect to peers
 		Printer.log("Connecting to peers...");
-		List<Address> activePeers = new ArrayList<Address>();
 		List<Address> peers = syncBox.getPeers();
 		for (Address peer : peers){
 			SocketClient client = new SocketClient(peer);
 			if (client.connect()){
 				Socket socket = client.getSocket();
+
+				// Update address
+				Address address = Address.toAddress(socket, peer.getPort());
+				syncBox.removePeer(peer);
+				syncBox.addPeer(address);
+
 				HydroSync.connections.put(peer, socket);
-				activePeers.add(peer);
 				JsonHandler.sendAuth(syncBox, socket);
 			}
 		}
@@ -68,10 +71,10 @@ public class SocketHandler {
 		try {
 			if (isConnected(socket)){
 				DataOutputStream os = new DataOutputStream(socket.getOutputStream());
-				if (os != null && !socket.isInputShutdown()){
+				if (os != null && !socket.isOutputShutdown() && !socket.isInputShutdown()){
 					String utf = msg.toJSONString();
+					Printer.debug("Sent: " + utf);
 					os.writeUTF(utf);
-					Thread.sleep(100);
 					return true;
 				}
 			}

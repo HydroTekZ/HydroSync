@@ -18,13 +18,15 @@ public class SyncBox {
 	private BasicDataSource dataSource;
 	private Connection sql;
 	private List<Address> peers;
+	private String key;
 
-	public SyncBox (String name, File folder, BasicDataSource dataSource, Connection sql, List<Address> peers){
+	public SyncBox (String name, File folder, BasicDataSource dataSource, Connection sql, List<Address> peers, String key){
 		this.name = name;
 		this.folder = folder;
 		this.dataSource = dataSource;
 		this.sql = sql;
 		this.peers = peers;
+		this.key = key;
 	}
 
 	public SyncBox refresh(){
@@ -33,6 +35,10 @@ public class SyncBox {
 
 	public String getName(){
 		return name;
+	}
+	
+	public String getKey(){
+		return key;
 	}
 
 	/*
@@ -57,6 +63,16 @@ public class SyncBox {
 
 	public List<Address> getPeers(){
 		return peers;
+	}
+
+	public void removePeer(Address address){
+		peers.remove(address);
+		HydroSync.syncBoxes.put(name, this);
+	}
+
+	public void addPeer(Address address){
+		peers.add(address);
+		HydroSync.syncBoxes.put(name, this);
 	}
 
 	public List<Socket> getSockets(){

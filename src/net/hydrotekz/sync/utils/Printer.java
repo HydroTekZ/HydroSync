@@ -33,22 +33,32 @@ public class Printer {
 		}
 	}
 
-	public static void logError(String error, String message) {
+	public static void debug(String message) {
 		if (message == null) return;
 		try {
 			if (message.length() < 1) return;
 
-			File file = new File(System.getProperty("user.dir") + File.separator + "Errors");
+			File file = new File(System.getProperty("user.dir") + File.separator + "Logs");
 			if (!file.exists()) {
 				file.mkdirs();
 			}
-			BufferedWriter out = new BufferedWriter(new FileWriter("Errors" + File.separator + error + ".log", true));
-			out.write(getTime() + ": " + message);
+			BufferedWriter out = new BufferedWriter(new FileWriter("Logs" + File.separator + getDate() + ".log", true));
+			out.write(getClock() + ": " + message);
 			out.newLine();
 			out.close();
 
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	public static void debug(Exception e){
+		debug("---");
+		debug(getErrorText(e));
+		String error = e.toString();
+		if (error.contains(".")){
+			String[] split = error.split("\\.");
+			error = split[split.length-1];
 		}
 	}
 
@@ -60,8 +70,6 @@ public class Printer {
 			String[] split = error.split("\\.");
 			error = split[split.length-1];
 		}
-		logError(error, "---");
-		logError(error, getErrorText(e));
 	}
 
 	public static String getErrorText(Exception e){
@@ -73,13 +81,6 @@ public class Printer {
 
 	private static String getDate(){
 		DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-		Calendar cal = Calendar.getInstance();
-		return dateFormat.format(cal.getTime());
-	}
-
-
-	private static String getTime(){
-		DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 		Calendar cal = Calendar.getInstance();
 		return dateFormat.format(cal.getTime());
 	}

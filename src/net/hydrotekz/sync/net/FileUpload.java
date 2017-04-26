@@ -11,7 +11,6 @@ import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.json.simple.JSONObject;
 
-import net.hydrotekz.sync.indexing.RepeatIndexer;
 import net.hydrotekz.sync.sqlite.IndexDatabase;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.JsonHandler;
@@ -44,7 +43,6 @@ public class FileUpload {
 
 			if (lastModified != Utils.getLastModified(file)){
 				Printer.log("Upload aborted, changes detected!");
-				RepeatIndexer.checkElement(syncFile, syncBox);
 				return;
 			}
 

@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.Formatter;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import net.hydrotekz.sync.utils.Printer;
 
 public class Hasher {
@@ -36,5 +38,8 @@ public class Hasher {
 		}
 		return null;
 	}
-
+	
+	public static String getStringHash(String content){
+		return DigestUtils.sha1Hex(content);
+	}
 }

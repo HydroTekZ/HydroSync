@@ -14,7 +14,6 @@ import net.hydrotekz.sync.utils.JsonHandler;
 import net.hydrotekz.sync.utils.Printer;
 import net.hydrotekz.sync.utils.SyncBox;
 import net.hydrotekz.sync.utils.SyncFile;
-import net.hydrotekz.sync.utils.Utils;
 
 @SuppressWarnings("unchecked")
 public class NetworkIndexer {
@@ -23,40 +22,61 @@ public class NetworkIndexer {
 	public static void executeSync(SyncBox syncBox) throws Exception {
 		try {
 			Printer.log("Syncing...");
-			if (!syncBox.getSockets().isEmpty()){
-				Connection c = syncBox.getSqlConn();
+			Connection c = syncBox.getSqlConn();
 
-				// Loop through database
-				List<String> elements = IndexDatabase.getElements(c);
-				for (String path : elements){
-					SyncFile syncFile = SyncFile.toSyncFile(syncBox, path);
-					File file = syncFile.getFile();
-					String status = IndexDatabase.getStatus(path, c);
-					if (!syncFile.isBusy()){
-						if (file.exists()){
-							// Check with network
-							for (Socket socket : syncBox.getSockets()){
-								outgoingCheck(syncBox, syncFile, socket);
-							}
+			// Loop through database
+			List<String> elements = IndexDatabase.getElements(c);
+			for (String path : elements){
+				long time = System.currentTimeMillis();
+				SyncFile syncFile = SyncFile.toSyncFile(syncBox, path);
+				File file = syncFile.getFile();
+				String status = IndexDatabase.getStatus(path, c);
+				if (!syncFile.isBusy()){
+					// Check if deleted
+					if (!file.exists() && !status.equals("deleted")){
+						if (status.equals("syncing")){
+							IndexDatabase.removeFile(path, c);
+							Printer.log("Removed " + file.getName() + " from database.");
+							continue;
 
-						} else if (!status.equals("deleted") && !status.equals("syncing")){
+						} else {
 							// Set as deleted
-							IndexDatabase.updateFileHash(path, null, c);
-							IndexDatabase.updateStatus(path, "deleted", c);
-							IndexDatabase.updateFileSize(path, 0, c);
-							File dir = file.getParentFile();
-							while (!dir.exists()){
-								dir = dir.getParentFile();
-							}
-							IndexDatabase.updateLastModified(path, Utils.getLastModified(dir), c);
+							syncFile.delete(0);
+							Printer.log("Delete of " + file.getName() + " detected.");
+						}
+					}
+
+					// Index if necessary
+					if (file.exists() && !syncFile.isDir()){
+						String hash = IndexDatabase.getFileHash(path, c);
+						if (hash == null){
+							Printer.log("Refresh of " + file.getName() + " needed.");
+							syncFile.refresh();
+						}
+					}
+
+					// Check with network
+					for (Socket socket : syncBox.getSockets()){
+						if (SocketHandler.isConnected(socket)){
+							outgoingCheck(syncBox, syncFile, socket);
 						}
 					}
 				}
-				Printer.log("Synced " + elements.size() + " elements!");
-
-			} else {
-				Printer.log("No connections found!");
+				long delay = System.currentTimeMillis()-time;
+				if (delay > 3000){
+					Printer.log("Slowdown of " + file.getName() + " detected!");
+				}
 			}
+
+			// Debug network
+			int connections = 0;
+			for (Socket socket : syncBox.getSockets()){
+				if (SocketHandler.isConnected(socket)){
+					connections++;
+				}
+			}
+
+			Printer.log("Synced " + elements.size() + " elements with " + connections + " peers!");
 
 		} catch (Exception e) {
 			Printer.log(e);
@@ -80,7 +100,12 @@ public class NetworkIndexer {
 		json.put("status", status);
 		json.put("lastmodified", lastModified);
 		json.put("hash", hash);
+		long time = System.currentTimeMillis();
 		SocketHandler.sendMessage(socket, json);
+		long delay = System.currentTimeMillis()-time;
+		if (delay > 3000){
+			Printer.log("High network delay of " + syncFile.getFileName() + " detected!");
+		}
 	}
 
 	// Handle incoming check
@@ -100,7 +125,7 @@ public class NetworkIndexer {
 			myLastModified = IndexDatabase.getLastModified(syncPath, c);
 			myStatus = IndexDatabase.getStatus(syncPath, c);
 			myHash = IndexDatabase.getFileHash(syncPath, c);
-			if (!syncFile.isDir() && hash.equals(myHash)){
+			if (!syncFile.isDir() && hash != null && hash.equals(myHash)){
 				return;
 			}
 		}
@@ -116,9 +141,9 @@ public class NetworkIndexer {
 
 			} else {
 				if (syncFile.isDir()){
-					//					if (!syncFile.fileExist()){
-					//						file.mkdirs();
-					//					}
+					if (!syncFile.fileExist()){
+						syncFile.getFile().mkdirs();
+					}
 
 				} else {
 					Printer.log("Requesting " + syncFile.getFileName() + " to download.");

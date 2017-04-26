@@ -5,7 +5,7 @@ import java.sql.Connection;
 
 import org.apache.commons.io.FileUtils;
 
-import net.hydrotekz.sync.indexing.RepeatIndexer;
+import net.hydrotekz.sync.indexing.ElementIndexer;
 import net.hydrotekz.sync.net.FileDownload;
 import net.hydrotekz.sync.net.FileUpload;
 import net.hydrotekz.sync.sqlite.IndexDatabase;
@@ -106,7 +106,7 @@ public class SyncFile {
 	}
 
 	public void refresh() throws Exception {
-		RepeatIndexer.checkElement(this, syncBox);
+		if (file.exists()) ElementIndexer.indexElement(this);
 	}
 
 	public String getFileExt(){
@@ -120,6 +120,93 @@ public class SyncFile {
 			return ext.toString();
 		}
 		return null;
+	}
+
+	/*
+	 * Database related
+	 */
+
+	public void delete(long overrideTime) throws Exception {
+		Connection c = syncBox.getSqlConn();
+		IndexDatabase.updateFileHash(syncPath, null, c);
+		IndexDatabase.updateStatus(syncPath, "deleted", c);
+		IndexDatabase.updateFileSize(syncPath, 0, c);
+		File dir = file.getParentFile();
+		while (!dir.exists()){
+			dir = dir.getParentFile();
+		}
+		long time = Utils.getLastModified(dir);
+		if (overrideTime > time) time = overrideTime;
+		IndexDatabase.updateLastModified(syncPath, time, c);
+	}
+
+	public void addToDb(long fileSize, String status, long lastModified, String fileHash) throws Exception {
+		Connection c = syncBox.getSqlConn();
+		IndexDatabase.addFile(syncPath, fileSize, status, lastModified, fileHash, c);
+	}
+
+	public void update(long fileSize, String status, long lastModified, String fileHash) throws Exception {
+		Connection c = syncBox.getSqlConn();
+		if (!doesExist()){
+			IndexDatabase.addFile(syncPath, fileSize, status, lastModified, fileHash, c);
+
+		} else {
+			updateFileSize(fileSize);
+			updateStatus(status);
+			updateLastModified(lastModified);
+			updateFileHash(fileHash);
+		}
+	}
+
+	public void updateFileSize(long fileSize) throws Exception {
+		Connection c = syncBox.getSqlConn();
+		IndexDatabase.updateFileSize(syncPath, fileSize, c);
+	}
+
+	public void updateFileHash(String fileHash) throws Exception {
+		Connection c = syncBox.getSqlConn();
+		IndexDatabase.updateFileHash(syncPath, fileHash, c);
+	}
+
+	public void updateLastModified(long lastModified) throws Exception {
+		Connection c = syncBox.getSqlConn();
+		IndexDatabase.updateLastModified(syncPath, lastModified, c);
+	}
+
+	public void updateStatus(String status) throws Exception {
+		Connection c = syncBox.getSqlConn();
+		IndexDatabase.updateStatus(syncPath, status, c);
+	}
+
+	public boolean doesExist() throws Exception {
+		Connection c = syncBox.getSqlConn();
+		return IndexDatabase.doesExist(syncPath, c);
+	}
+
+	public long getLastModified() throws Exception {
+		Connection c = syncBox.getSqlConn();
+		return IndexDatabase.getLastModified(syncPath, c);
+	}
+
+	public String getFileHash() throws Exception {
+		Connection c = syncBox.getSqlConn();
+		return IndexDatabase.getFileHash(syncPath, c);
+	}
+
+	public long getFileSize() throws Exception {
+		Connection c = syncBox.getSqlConn();
+		return IndexDatabase.getFileSize(syncPath, c);
+	}
+
+	public String getStatus() throws Exception {
+		Connection c = syncBox.getSqlConn();
+		return IndexDatabase.getStatus(syncPath, c);
+	}
+
+	public boolean isDeleted() throws Exception {
+		if (!doesExist()) return false;
+		String status = getStatus();
+		return status != null && status.equals("deleted");
 	}
 
 	/*

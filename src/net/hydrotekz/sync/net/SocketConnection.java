@@ -3,10 +3,11 @@ package net.hydrotekz.sync.net;
 import java.io.DataInputStream;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.HashMap;
+import java.net.SocketTimeoutException;
 
 import org.json.simple.JSONObject;
 
+import net.hydrotekz.sync.HydroSync;
 import net.hydrotekz.sync.indexing.NetworkIndexer;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.JsonHandler;
@@ -18,8 +19,6 @@ public class SocketConnection implements Runnable {
 
 	private Socket socket;
 	private Address address;
-
-	public static HashMap<Address, DataInputStream> streams = new HashMap<Address, DataInputStream>();
 
 	public SocketConnection(Socket socket, Address address) {
 		this.socket = socket;
@@ -36,6 +35,8 @@ public class SocketConnection implements Runnable {
 				try {
 					text = in.readUTF();
 					if (text != null){
+						Printer.debug("Received: " + text);
+
 						JSONObject msg = JsonHandler.getJson(text);
 						String cmd = (String) msg.get("cmd");
 						String syncName = (String) msg.get("sync");
@@ -57,15 +58,31 @@ public class SocketConnection implements Runnable {
 							long lastModified = (long) msg.get("lastmodified");
 							SyncFile syncFile = SyncFile.toSyncFile(syncBox, syncPath);
 							if (syncFile.fileExist()) syncFile.remove(lastModified);
+							Printer.log("Delete command of " + syncFile.getFileName() + " received.");
 						}
 					}
 
-				} catch (Exception e){
-					Printer.log(e);
+				} catch (SocketTimeoutException e){
+					Printer.debug(e);
+					if (!SocketHandler.isConnected(socket)){
+						Printer.log("Attempting to reconnect to " + address.toString() + "...");
+						SocketClient socketClient = new SocketClient(address);
+						if (socketClient.reconnect()){
+							socket = socketClient.getSocket();
+							HydroSync.connections.remove(address);
+							HydroSync.connections.put(address, socket);
+							in = new DataInputStream(socket.getInputStream());
+						}
+
+					} else {
+						Printer.log("Unable to read from data stream, attempting to fix the stream.");
+						in = new DataInputStream(socket.getInputStream());
+					}
 				}
 			}
 
 		} catch (SocketException e) {
+			Printer.debug(e);
 			Printer.log("Peer " + address.toString() + " disconnected!");
 
 		} catch (Exception e) {

@@ -13,6 +13,7 @@ import java.util.List;
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import net.hydrotekz.sync.config.MainConfig;
+import net.hydrotekz.sync.crypto.Hasher;
 import net.hydrotekz.sync.indexing.IndexHandler;
 import net.hydrotekz.sync.net.SocketHandler;
 import net.hydrotekz.sync.sqlite.DbManager;
@@ -80,15 +81,19 @@ public class HydroSync {
 
 						peers.add(address);
 
+						// Prepare key
+						String key = cfgBox.getKey();
+						key = Hasher.getStringHash(key);
+
 						// Create the object
-						SyncBox syncBox = new SyncBox(name, file, database, sqlConn, peers);
+						SyncBox syncBox = new SyncBox(name, file, database, sqlConn, peers, key);
 						syncBoxes.put(name, syncBox);
 
 						// Create connections
 						SocketHandler.establishConnections(syncBox);
 
 						// Index
-						IndexHandler.enableIndexing(syncBox);
+						IndexHandler.startIndexer(syncBox);
 					}
 				};
 				new Thread(r).start();

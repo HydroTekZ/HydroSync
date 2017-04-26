@@ -10,29 +10,14 @@ import net.hydrotekz.sync.utils.SyncBox;
 import net.hydrotekz.sync.utils.SyncFile;
 import net.hydrotekz.sync.utils.Utils;
 
-public class RepeatIndexer {
+public class _RepeatIndexer {
 
-	// Start indexing
+	// Execute index
 	public static void executeIndex(SyncBox syncBox) throws Exception {
-		try {
-			// Index folder
-			Printer.log("Indexing...");
-			File folder = syncBox.getFolder();
-			loopIndex(syncBox, folder);
-			Printer.log("Indexing complete!");
-
-			// Refresh sync
-			NetworkIndexer.executeSync(syncBox.refresh());
-
-			// Continue task
-			Thread.sleep(1000*60*5);
-			executeIndex(syncBox.refresh());
-
-		} catch (Exception ex){
-			Printer.log(ex);
-			Printer.log("Indexing aborted due to critical error.");
-			System.exit(0);
-		}
+		Printer.log("Indexing...");
+		File folder = syncBox.getFolder();
+		loopIndex(syncBox, folder);
+		Printer.log("Indexing complete!");
 	}
 
 	// Do the loop
@@ -40,12 +25,12 @@ public class RepeatIndexer {
 		SyncFile syncFile = SyncFile.toSyncFile(syncBox, file);
 		if (!syncFile.ignore()){
 			// Index element
-			checkElement(syncFile, syncBox);
+			checkElement(syncFile, syncBox, true, false);
 		}
 	}
 
 	// Index element
-	public static void checkElement(SyncFile syncFile, SyncBox syncBox) throws Exception {
+	public static void checkElement(SyncFile syncFile, SyncBox syncBox, boolean expand, boolean force) throws Exception {
 		File file = syncFile.getFile();
 		if (file == null || !file.exists()) return;
 
@@ -61,7 +46,7 @@ public class RepeatIndexer {
 			status = IndexDatabase.getStatus(path, c);
 		}
 
-		if ((status != null && status.equals("deleted")) || oldLastModified == 0 || lastModified != oldLastModified){
+		if ((status != null && status.equals("deleted")) || force || oldLastModified == 0 || lastModified != oldLastModified){
 			long fileSize = -1;
 			String fileHash = null;
 			if (status != null && status.equals("deleted")){
@@ -92,12 +77,11 @@ public class RepeatIndexer {
 			}
 
 			// Add more elements to the loop
-			if (file.isDirectory()){
+			if (expand && file.isDirectory()){
 				for (File f : file.listFiles()){
 					loopIndex(syncBox, f);
 				}
 			}
 		}
 	}
-
 }

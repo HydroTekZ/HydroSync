@@ -5,7 +5,7 @@ import java.sql.PreparedStatement;
 import java.util.List;
 
 public class IndexDatabase {
-	
+
 	/*
 	 * Colums:			Path	|	FileSize	|	Status	|	LastModified	|	FileHash
 	 * File --> 		*path*	-	  1024		-	synced	- 		2017 		- 	  null
@@ -14,7 +14,7 @@ public class IndexDatabase {
 	 * Downloading -->  *path*  - 	  1024	 	-	syncing - 		  0 		- 	  null
 	 */
 
-	// Registers file
+	// Add or remove
 
 	public static void addFile(String path, long fileSize, String status, long lastModified, String fileHash, Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("INSERT INTO `elements` (path, filesize, status, lastmodified, filehash) VALUES "
@@ -24,6 +24,13 @@ public class IndexDatabase {
 		ps.setString(3, status);
 		ps.setLong(4, lastModified);
 		ps.setString(5, fileHash);
+		ps.execute();
+		ps.close();
+	}
+
+	public static void removeFile(String path, Connection c) throws Exception {
+		PreparedStatement ps = c.prepareStatement("DELETE FROM `elements` WHERE path=?");
+		ps.setString(1, path);
 		ps.execute();
 		ps.close();
 	}
@@ -76,7 +83,7 @@ public class IndexDatabase {
 	}
 
 	// Get information
-	
+
 	public static List<String> getElements(Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("SELECT `path` FROM `elements`");
 		List<String> result = DbManager.getStringList("path", ps);
