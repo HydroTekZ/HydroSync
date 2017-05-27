@@ -9,7 +9,7 @@ import java.util.Map.Entry;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
-import net.hydrotekz.sync.HydroSync;
+import net.hydrotekz.sync.MainCore;
 
 public class SyncBox {
 
@@ -30,13 +30,13 @@ public class SyncBox {
 	}
 
 	public SyncBox refresh(){
-		return HydroSync.syncBoxes.get(name);
+		return MainCore.syncBoxes.get(name);
 	}
 
 	public String getName(){
 		return name;
 	}
-	
+
 	public String getKey(){
 		return key;
 	}
@@ -52,7 +52,7 @@ public class SyncBox {
 	public Connection getSqlConn() throws Exception {
 		if (sql.isClosed()){
 			sql = dataSource.getConnection();
-			HydroSync.syncBoxes.put(name, this);
+			MainCore.syncBoxes.put(name, this);
 		}
 		return sql;
 	}
@@ -67,19 +67,19 @@ public class SyncBox {
 
 	public void removePeer(Address address){
 		peers.remove(address);
-		HydroSync.syncBoxes.put(name, this);
+		MainCore.syncBoxes.put(name, this);
 	}
 
 	public void addPeer(Address address){
 		peers.add(address);
-		HydroSync.syncBoxes.put(name, this);
+		MainCore.syncBoxes.put(name, this);
 	}
 
 	public List<Socket> getSockets(){
 		List<Socket> sockets = new ArrayList<Socket>();
-		for (Entry<Address, Socket> e : HydroSync.connections.entrySet()){
+		for (Entry<String, Socket> e : MainCore.sockets.entrySet()){
 			for (Address peer : peers){
-				if (peer.toString().equals(e.getKey().toString())){
+				if (peer.toString().equals(e.getKey())){
 					sockets.add(e.getValue());
 				}
 			}
@@ -89,10 +89,10 @@ public class SyncBox {
 
 	public Address getSocketHostAddress(Socket socket){
 		Address address = Address.toAddress(socket);
-		for (Entry<Address, Socket> e : HydroSync.connections.entrySet()){
+		for (Entry<String, Socket> e : MainCore.sockets.entrySet()){
 			Address socketAddress = Address.toAddress(e.getValue());
 			if (socketAddress.toString().equals(address.toString())){
-				return e.getKey();
+				return Address.toAddress(e.getKey());
 			}
 		}
 		return null;
@@ -134,6 +134,6 @@ public class SyncBox {
 	 */
 
 	public static SyncBox getSyncBox(String name){
-		return HydroSync.syncBoxes.get(name);
+		return MainCore.syncBoxes.get(name);
 	}
 }

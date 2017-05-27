@@ -4,14 +4,12 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.Socket;
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
-import net.hydrotekz.sync.sqlite.IndexDatabase;
 import net.hydrotekz.sync.utils.Printer;
 import net.hydrotekz.sync.utils.SyncBox;
 import net.hydrotekz.sync.utils.SyncFile;
@@ -29,17 +27,9 @@ public class FileDownload {
 		inProgress.add(syncPath);
 
 		try {
-			Printer.log("Downloading " + syncFile.getFileName() + "...");
+			Printer.printInfo("Downloading " + syncFile.getFileName() + "...");
 
-			Connection c = syncBox.getSqlConn();
-			if (!IndexDatabase.doesExist(syncPath, c)){
-				IndexDatabase.addFile(syncPath, size, "syncing", lastModified, hash, c);
-			} else {
-				IndexDatabase.updateFileHash(syncPath, hash, c);
-				IndexDatabase.updateFileSize(syncPath, size, c);
-				IndexDatabase.updateLastModified(syncPath, lastModified, c);
-				IndexDatabase.updateStatus(syncPath, "syncing", c);
-			}
+			syncFile.update(size, "syncing", lastModified, hash);
 
 			// Create temp file
 			String tmpName = syncFile.getFileName().replace(syncFile.getFileExt(), "") + "_";
@@ -48,7 +38,7 @@ public class FileDownload {
 			// Delete existing file
 			if (toFile != null && toFile.exists()){
 				syncFile.recycle();
-				Printer.log("(existing file was removed and will be replaced)");
+				Printer.printInfo("(existing file was removed and will be replaced)");
 			}
 
 			// Transfer file
@@ -63,31 +53,27 @@ public class FileDownload {
 			socket.close();
 
 		} catch (Exception ex){
-			Printer.log(ex);
+			Printer.printError(ex);
 
 		} finally {
 			if (tmpFile.length() == size){
 				try {
 					// Finalize
-					Connection c = syncBox.getSqlConn();
-
 					toFile.getParentFile().mkdirs();
 					FileUtils.moveFile(tmpFile, toFile);
 
-					IndexDatabase.updateFileHash(syncPath, hash, c);
-					IndexDatabase.updateFileSize(syncPath, size, c);
+					syncFile.updateStatus("synced");
 					Utils.setLastModified(toFile, lastModified);
-					IndexDatabase.updateStatus(syncPath, "synced", c);
 
 					Thread.sleep(250);
-					Printer.log("Successfully downloaded " + syncFile.getFileName() + "!");
+					Printer.printInfo("Successfully downloaded " + syncFile.getFileName() + "!");
 
 				} catch (Exception e){
-					Printer.log(e);
-					Printer.log("Download was almost successful.");
+					Printer.logError(e);
+					Printer.printError("Download was almost successful! Check logs for more info.");
 				}
 			} else {
-				Printer.log("Download failed!");
+				Printer.printError("Download failed!");
 			}
 			inProgress.remove(syncPath);
 		}

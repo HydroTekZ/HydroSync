@@ -33,12 +33,12 @@ public class Hasher {
 				return formatter.toString();
 			}
 		} catch (Exception e){
-			Printer.log("Failed to hash file: " + file.getName());
-			Printer.log(e);
+			Printer.printError(e);
+			Printer.printError("Failed to hash file: " + file.getName());
 		}
 		return null;
 	}
-	
+
 	public static String getStringHash(String content){
 		return DigestUtils.sha1Hex(content);
 	}

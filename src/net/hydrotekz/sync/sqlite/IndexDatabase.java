@@ -2,7 +2,11 @@ package net.hydrotekz.sync.sqlite;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
+
+import net.hydrotekz.sync.utils.Element;
 
 public class IndexDatabase {
 
@@ -84,10 +88,25 @@ public class IndexDatabase {
 
 	// Get information
 
-	public static List<String> getElements(Connection c) throws Exception {
+	public static List<String> getSyncPaths(Connection c) throws Exception {
 		PreparedStatement ps = c.prepareStatement("SELECT `path` FROM `elements`");
 		List<String> result = DbManager.getStringList("path", ps);
 		return result;
+	}
+
+	public static List<Element> getElements(Connection c) throws Exception {
+		PreparedStatement ps = c.prepareStatement("SELECT * FROM `elements`");
+
+		List<Element> elements = new ArrayList<Element>();
+		ResultSet rs = ps.executeQuery();
+		while (rs.next()) {
+			Element elm = new Element(rs.getString("path"), rs.getLong("filesize"), rs.getString("status"), rs.getLong("lastmodified"), rs.getString("filehash"));
+			elements.add(elm);
+			ps.close();
+		}
+		ps.close();
+
+		return elements;
 	}
 
 	public static String getStatus(String path, Connection c) throws Exception {

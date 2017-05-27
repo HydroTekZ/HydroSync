@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.json.simple.JSONObject;
 
+import net.hydrotekz.sync.MainCore;
 import net.hydrotekz.sync.sqlite.IndexDatabase;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.JsonHandler;
@@ -28,21 +29,21 @@ public class FileUpload {
 		try {
 			File file = syncFile.getFile();
 			if (!file.exists()){
-				Printer.log("File \"" + syncFile.getFileName() + "\" does not exist!");
+				Printer.printWarning("File \"" + syncFile.getFileName() + "\" does not exist! File upload aborted.");
 				return;
 			}
 			String syncPath = syncFile.getSyncPath();
 			if (inProgress.contains(syncPath)) return;
 			inProgress.add(syncPath);
 
-			Printer.log("Uploading " + file.getName() + "...");
+			Printer.printInfo("Uploading " + file.getName() + "...");
 
 			// Check for changes
 			Connection c = syncBox.getSqlConn();
 			long lastModified = IndexDatabase.getLastModified(syncPath, c);
 
 			if (lastModified != Utils.getLastModified(file)){
-				Printer.log("Upload aborted, changes detected!");
+				Printer.printInfo("Upload aborted, changes detected!");
 				return;
 			}
 
@@ -53,6 +54,7 @@ public class FileUpload {
 
 			// Send message
 			JSONObject json = JsonHandler.prepJson(syncBox);
+			json.put("ver", MainCore.version);
 			json.put("cmd", "download_file");
 			json.put("lastmodified", lastModified);
 			json.put("hash", IndexDatabase.getFileHash(syncPath, c));
@@ -71,10 +73,10 @@ public class FileUpload {
 			socket.close();
 
 			Thread.sleep(100);
-			Printer.log("Successfully uploaded " + file.getName() + "!");
+			Printer.printInfo("Successfully uploaded " + file.getName() + "!");
 
 		} catch (Exception ex){
-			Printer.log("Failed to upload!");
+			Printer.printInfo("Failed to upload!");
 
 		} finally {
 			inProgress.remove(syncFile.getSyncPath());

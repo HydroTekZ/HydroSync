@@ -11,18 +11,18 @@ import net.hydrotekz.sync.utils.SyncBox;
 
 public class Decryptor {
 
-	public String decryptText(SyncBox syncBox, String base64) throws Exception {
+	public static String decryptText(SyncBox syncBox, String base64) throws Exception {
 		byte[] encrypted = Base64.decodeBase64(base64);
 		byte[] decrypted = decrypt(syncBox, encrypted);
 		String text = new String(decrypted, "UTF-8");
 		return text;
 	}
 
-	public byte[] decrypt(SyncBox syncBox, byte[] bytes) throws Exception {
+	public static byte[] decrypt(SyncBox syncBox, byte[] bytes) throws Exception {
 		String key = syncBox.getKey();
 		Key aesKey = new SecretKeySpec(key.getBytes(), "AES");
 
-		// Encrypt data
+		// Decrypt data
 		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 		cipher.init(Cipher.DECRYPT_MODE, aesKey);
 		byte[] data = cipher.doFinal(bytes);

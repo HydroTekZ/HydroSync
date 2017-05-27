@@ -41,7 +41,7 @@ public class SyncFile {
 	}
 
 	public void setLastModified(long time) throws Exception {
-		Utils.setLastModified(file, time);
+		if (file.exists()) Utils.setLastModified(file, time);
 	}
 
 	public void remove(long lastModified) throws Exception {
@@ -102,11 +102,11 @@ public class SyncFile {
 	}
 
 	public boolean fileExist(){
-		return file.exists();
+		return file != null && file.exists();
 	}
 
 	public void refresh() throws Exception {
-		if (file.exists()) ElementIndexer.indexElement(this);
+		if (file.exists() && file != null) ElementIndexer.indexElement(this);
 	}
 
 	public String getFileExt(){
@@ -127,17 +127,22 @@ public class SyncFile {
 	 */
 
 	public void delete(long overrideTime) throws Exception {
-		Connection c = syncBox.getSqlConn();
-		IndexDatabase.updateFileHash(syncPath, null, c);
-		IndexDatabase.updateStatus(syncPath, "deleted", c);
-		IndexDatabase.updateFileSize(syncPath, 0, c);
-		File dir = file.getParentFile();
-		while (!dir.exists()){
-			dir = dir.getParentFile();
+		if (doesExist()){
+			String status = getStatus();
+			if (!status.equals("deleted")){
+				Printer.printInfo("Deletion detected to: " + file.getName());
+
+				File dir = file.getParentFile();
+				while (!dir.exists()){
+					dir = dir.getParentFile();
+				}
+				long time = Utils.getLastModified(dir);
+				if (overrideTime > 0) time = overrideTime;
+
+				update(0, "deleted", time, null);
+				ElementIndexer.fixParents(this);
+			}
 		}
-		long time = Utils.getLastModified(dir);
-		if (overrideTime > time) time = overrideTime;
-		IndexDatabase.updateLastModified(syncPath, time, c);
 	}
 
 	public void addToDb(long fileSize, String status, long lastModified, String fileHash) throws Exception {
@@ -169,8 +174,10 @@ public class SyncFile {
 	}
 
 	public void updateLastModified(long lastModified) throws Exception {
-		Connection c = syncBox.getSqlConn();
-		IndexDatabase.updateLastModified(syncPath, lastModified, c);
+		if (file.exists()){
+			Connection c = syncBox.getSqlConn();
+			IndexDatabase.updateLastModified(syncPath, lastModified, c);
+		}
 	}
 
 	public void updateStatus(String status) throws Exception {

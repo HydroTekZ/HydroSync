@@ -20,9 +20,9 @@ public class ElementIndexer {
 		SyncFile syncFile = SyncFile.toSyncFile(syncBox, rootDir);
 
 		// Start indexing
-		Printer.log("Indexing...");
+		Printer.printInfo("Indexing...");
 		FileInfo info = indexFolder(syncFile);
-		Printer.log("Indexed " + Utils.getFileSizeText(info.getFileSize()) + "!");
+		Printer.printInfo("Indexed " + Utils.getFileSizeText(info.getFileSize()) + "!");
 	}
 
 	private static FileInfo indexFolder(SyncFile syncDir) throws Exception {
@@ -32,6 +32,7 @@ public class ElementIndexer {
 		long dirLastModified = Utils.getLastModified(dir);
 		JSONObject json = new JSONObject();
 
+		Printer.logDebug("Indexing " + syncDir.getSyncPath() + ".");
 		// Loop through content
 		for (File file : dir.listFiles()){
 			SyncFile syncFile = SyncFile.toSyncFile(syncDir.getSyncBox(), file);
@@ -53,8 +54,15 @@ public class ElementIndexer {
 	}
 
 	public static FileInfo indexElement(SyncFile syncFile) throws Exception {
-		if (syncFile.isDir()) return indexFolder(syncFile);
-		else return indexFile(syncFile);
+		try {
+			if (syncFile.isDir()) return indexFolder(syncFile);
+			else return indexFile(syncFile);
+
+		} catch (Exception e) {
+			Printer.logError(e);
+			Printer.printError("Failed to index: \"" + syncFile.getSyncPath() + "\". Check logs for more info.");
+			return null;
+		}
 	}
 
 	private static FileInfo indexFile(SyncFile syncFile) throws Exception {
@@ -74,6 +82,7 @@ public class ElementIndexer {
 
 		// Index file
 		if (fileLastModified != dbLastModified || fileHash == null || fileSize != file.length()){
+			Printer.printInfo("Update detected to: " + file.getName());
 			// Get file hash
 			fileHash = Hasher.getFileHash(file);
 			fileSize = file.length();
@@ -87,8 +96,8 @@ public class ElementIndexer {
 
 			// Upload to database
 			syncFile.update(fileSize, "synced", fileLastModified, fileHash);
+
 			fixParents(syncFile);
-			Printer.log("Update detected to: " + file.getName());
 
 		} else fileLastModified = dbLastModified;
 
@@ -96,20 +105,34 @@ public class ElementIndexer {
 		return output;
 	}
 
-	private static void fixParents(SyncFile syncFile) throws Exception {
+	public static void fixParents(SyncFile syncFile) throws Exception {
 		File file = syncFile.getFile();
 		File root = syncFile.getSyncBox().getFolder();
 		long fileLastModified = syncFile.getLastModified();
 
+		Printer.logDebug("Fixing parents for " + syncFile.getFileName() + "...");
+
 		while(true){
 			file = file.getParentFile();
+			if (!file.exists()) continue;
+
 			if (file.getAbsolutePath().startsWith(root.getAbsolutePath())){
+				JSONObject json = new JSONObject();
 				SyncFile syncDir = SyncFile.toSyncFile(syncFile.getSyncBox(), file);
-				long dirLastModified = syncDir.getLastModified();
-				if (fileLastModified > dirLastModified){
-					syncDir.setLastModified(fileLastModified);
-					Printer.log("DEBUG: Fixed " + syncDir.getSyncPath());
+
+				for (File subFile : syncDir.getFile().listFiles()){
+					SyncFile sub = SyncFile.toSyncFile(syncFile.getSyncBox(), subFile);
+					String hash = sub.getFileHash();
+					json.put(sub.getSyncPath(), hash);
 				}
+
+				String hash = Hasher.getStringHash(json.toJSONString());
+
+				syncDir.setLastModified(fileLastModified);
+				syncDir.updateLastModified(fileLastModified);
+				syncDir.updateFileHash(hash);
+
+				Printer.logDebug("Fixed: " + syncDir.getSyncPath());
 
 			} else break;
 		}

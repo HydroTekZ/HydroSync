@@ -1,5 +1,8 @@
 package net.hydrotekz.sync.indexing;
 
+import java.io.IOException;
+
+import net.hydrotekz.sync.MainCore;
 import net.hydrotekz.sync.utils.Printer;
 import net.hydrotekz.sync.utils.SyncBox;
 
@@ -10,16 +13,16 @@ public class IndexHandler {
 		try {
 			// Start watcher
 			Watcher.startWatch(syncBox);
-			
+
 			// Index folder
 			ElementIndexer.executeIndex(syncBox.refresh());
-			
+
 			// Enable interval scan
 			indexerTask(syncBox);
 
 		} catch (Exception ex){
-			Printer.log(ex);
-			Printer.log("Failed to index successfully.");
+			Printer.printError(ex);
+			Printer.printError("Failed to index successfully.");
 			System.exit(0);
 		}
 	}
@@ -31,13 +34,16 @@ public class IndexHandler {
 			NetworkIndexer.executeSync(syncBox.refresh());
 
 			// Continue task
-			Thread.sleep(1000*60*5);
+			Thread.sleep(1000*60*30);
 			indexerTask(syncBox);
 
+		} catch (IOException ioe){
+			MainCore.restartApplication();
+
 		} catch (Exception ex){
-			Printer.log(ex);
-			Printer.log("Indexing aborted due to critical error.");
-			System.exit(0);
+			Printer.printError(ex);
+			Printer.printError("Indexing aborted due to critical error.");
+			MainCore.stopApplication(true);
 		}
 	}
 }

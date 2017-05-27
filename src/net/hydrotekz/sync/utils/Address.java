@@ -30,8 +30,8 @@ public class Address {
 		return ip + ":" + port;
 	}
 
-	public boolean equals(SyncBox syncBox){
-		return syncBox.toString().equals(toString());
+	public boolean equals(Address address){
+		return address.toString().equals(toString());
 	}
 
 	/*

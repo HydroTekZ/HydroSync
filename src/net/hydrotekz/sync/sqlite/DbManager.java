@@ -19,10 +19,10 @@ public class DbManager {
 			dataSource = new BasicDataSource();
 			dataSource.setDriverClassName("org.sqlite.JDBC");
 			dataSource.setUrl("jdbc:sqlite:" + path);
-			System.out.println("Data source launched.");
+			Printer.printInfo("Data source launched.");
 
-		} catch ( Exception e ) {
-			Printer.log(e.getClass().getName() + ": " + e.getMessage());
+		} catch (Exception e) {
+			Printer.printError(e.getClass().getName() + ": " + e.getMessage());
 			System.exit(0);
 		}
 
@@ -55,11 +55,10 @@ public class DbManager {
 
 			stmt.close();
 			c.close();
-			System.out.println("Tables handled successfully.");
+			Printer.printInfo("Tables handled successfully.");
 
-		} catch ( Exception e ) {
-			Printer.log(e.getClass().getName() + ": " + e.getMessage());
-			Printer.log(e);
+		} catch (Exception e) {
+			Printer.printError(e.getClass().getName() + ": " + e.getMessage());
 			System.exit(0);
 		}
 	}
@@ -74,12 +73,12 @@ public class DbManager {
 			}
 			ps.close();
 		} catch (Exception e) {
-			Printer.log(e);
+			Printer.printError(e);
 		}
 		return 0;
 	}
 
-	public static String getString(String output, PreparedStatement ps) throws Exception {
+	public static String getString(String output, PreparedStatement ps) {
 		try {
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
@@ -89,12 +88,12 @@ public class DbManager {
 			}
 			ps.close();
 		} catch (Exception e) {
-			Printer.log(e);
+			Printer.printError(e);
 		}
 		return null;
 	}
 
-	public static List<String> getStringList(String output, PreparedStatement ps){
+	public static List<String> getStringList(String output, PreparedStatement ps) {
 		try {
 			List<String> list = new ArrayList<String>();
 			ResultSet rs = ps.executeQuery();
@@ -105,7 +104,7 @@ public class DbManager {
 			return list;
 
 		} catch (Exception e) {
-			Printer.log(e);
+			Printer.printError(e);
 		}
 		return null;
 	}

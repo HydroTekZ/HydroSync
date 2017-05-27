@@ -20,67 +20,57 @@ public class NetworkIndexer {
 
 	// Check for external changes
 	public static void executeSync(SyncBox syncBox) throws Exception {
-		try {
-			Printer.log("Syncing...");
-			Connection c = syncBox.getSqlConn();
+		Printer.printInfo("Syncing...");
+		Connection c = syncBox.getSqlConn();
 
-			// Loop through database
-			List<String> elements = IndexDatabase.getElements(c);
-			for (String path : elements){
-				long time = System.currentTimeMillis();
-				SyncFile syncFile = SyncFile.toSyncFile(syncBox, path);
-				File file = syncFile.getFile();
-				String status = IndexDatabase.getStatus(path, c);
-				if (!syncFile.isBusy()){
-					// Check if deleted
-					if (!file.exists() && !status.equals("deleted")){
-						if (status.equals("syncing")){
-							IndexDatabase.removeFile(path, c);
-							Printer.log("Removed " + file.getName() + " from database.");
-							continue;
+		// Loop through database
+		List<String> elements = IndexDatabase.getSyncPaths(c);
+		for (String path : elements){
+			SyncFile syncFile = SyncFile.toSyncFile(syncBox, path);
+			File file = syncFile.getFile();
+			String status = IndexDatabase.getStatus(path, c);
+			if (!syncFile.isBusy()){
+				// Check if deleted
+				if (!file.exists() && !status.equals("deleted")){
+					if (status.equals("syncing")){
+						IndexDatabase.removeFile(path, c);
+						Printer.printInfo("Removed " + file.getName() + " from database.");
+						continue;
 
-						} else {
-							// Set as deleted
-							syncFile.delete(0);
-							Printer.log("Delete of " + file.getName() + " detected.");
-						}
-					}
-
-					// Index if necessary
-					if (file.exists() && !syncFile.isDir()){
-						String hash = IndexDatabase.getFileHash(path, c);
-						if (hash == null){
-							Printer.log("Refresh of " + file.getName() + " needed.");
-							syncFile.refresh();
-						}
-					}
-
-					// Check with network
-					for (Socket socket : syncBox.getSockets()){
-						if (SocketHandler.isConnected(socket)){
-							outgoingCheck(syncBox, syncFile, socket);
-						}
+					} else {
+						// Set as deleted
+						syncFile.delete(0);
+						Printer.printInfo("Delete of " + file.getName() + " detected.");
 					}
 				}
-				long delay = System.currentTimeMillis()-time;
-				if (delay > 3000){
-					Printer.log("Slowdown of " + file.getName() + " detected!");
+
+				// Index if necessary
+				if (file.exists() && !syncFile.isDir()){
+					String hash = IndexDatabase.getFileHash(path, c);
+					if (hash == null){
+						Printer.printInfo("Refresh of " + file.getName() + " needed.");
+						syncFile.refresh();
+					}
+				}
+
+				// Check with network
+				for (Socket socket : syncBox.getSockets()){
+					if (SocketHandler.isConnected(socket)){
+						outgoingCheck(syncBox, syncFile, socket);
+					}
 				}
 			}
-
-			// Debug network
-			int connections = 0;
-			for (Socket socket : syncBox.getSockets()){
-				if (SocketHandler.isConnected(socket)){
-					connections++;
-				}
-			}
-
-			Printer.log("Synced " + elements.size() + " elements with " + connections + " peers!");
-
-		} catch (Exception e) {
-			Printer.log(e);
 		}
+
+		// Debug network
+		int connections = 0;
+		for (Socket socket : syncBox.getSockets()){
+			if (SocketHandler.isConnected(socket)){
+				connections++;
+			}
+		}
+
+		Printer.printInfo("Synced " + elements.size() + " elements with " + connections + " peers!");
 	}
 
 	// Send outgoing check
@@ -100,12 +90,7 @@ public class NetworkIndexer {
 		json.put("status", status);
 		json.put("lastmodified", lastModified);
 		json.put("hash", hash);
-		long time = System.currentTimeMillis();
 		SocketHandler.sendMessage(socket, json);
-		long delay = System.currentTimeMillis()-time;
-		if (delay > 3000){
-			Printer.log("High network delay of " + syncFile.getFileName() + " detected!");
-		}
 	}
 
 	// Handle incoming check
@@ -125,8 +110,13 @@ public class NetworkIndexer {
 			myLastModified = IndexDatabase.getLastModified(syncPath, c);
 			myStatus = IndexDatabase.getStatus(syncPath, c);
 			myHash = IndexDatabase.getFileHash(syncPath, c);
-			if (!syncFile.isDir() && hash != null && hash.equals(myHash)){
-				return;
+			if (hash != null && hash.equals(myHash)){
+				if (lastModified > myLastModified){
+					syncFile.updateLastModified(lastModified);
+					syncFile.setLastModified(lastModified);
+					Printer.printInfo("Last modified for " + syncFile.getFileName() + " was updated.");
+				}
+				if (!syncFile.isDir()) return;
 			}
 		}
 
@@ -135,39 +125,38 @@ public class NetworkIndexer {
 			// Update me
 			if (status.equals("deleted")){
 				if (syncFile.fileExist()){
-					Printer.log("Deletion of " + syncFile.getFileName() + " received.");
+					Printer.printInfo("Deletion of " + syncFile.getFileName() + " received.");
 					syncFile.remove(lastModified);
+
+				} else {
+					syncFile.update(0, "deleted", lastModified, null);
 				}
 
 			} else {
 				if (syncFile.isDir()){
 					if (!syncFile.fileExist()){
+						Printer.printInfo("Creating folder " + syncFile.getFileName() + " now.");
 						syncFile.getFile().mkdirs();
+						syncFile.updateLastModified(lastModified);
+						syncFile.setLastModified(lastModified);
 					}
 
 				} else {
-					Printer.log("Requesting " + syncFile.getFileName() + " to download.");
+					Printer.printInfo("Requesting " + syncFile.getFileName() + " to download.");
 					JSONObject json = JsonHandler.prepJson(syncBox);
 					json.put("cmd", "upload_file");
 					json.put("path", syncPath);
 					SocketHandler.sendMessage(socket, json);
 
-					if (!IndexDatabase.doesExist(syncPath, c)){
-						IndexDatabase.addFile(syncPath, 0, "syncing", lastModified, hash, c);
-					} else {
-						IndexDatabase.updateFileHash(syncPath, hash, c);
-						IndexDatabase.updateFileSize(syncPath, 0, c);
-						IndexDatabase.updateLastModified(syncPath, lastModified, c);
-						IndexDatabase.updateStatus(syncPath, "syncing", c);
-					}
+					syncFile.update(0, "syncing", lastModified, hash);
 				}
 			}
 
-		} else if (lastModified == 0 || lastModified < myLastModified){
+		} else if (myLastModified > lastModified){
 			// Send update
 			if (myStatus.equals("deleted")){
 				if (!status.equals("deleted")){
-					Printer.log("Sending delete command of " + syncFile.getFileName() + ".");
+					Printer.printInfo("Sending delete command of " + syncFile.getFileName() + ".");
 					JSONObject json = JsonHandler.prepJson(syncBox);
 					json.put("cmd", "delete_element");
 					json.put("path", syncPath);
@@ -181,7 +170,7 @@ public class NetworkIndexer {
 
 				} else {
 					// File
-					Printer.log("Upload of " + syncFile.getFileName() + " is needed.");
+					Printer.printInfo("Upload of " + syncFile.getFileName() + " is needed.");
 					FileUpload.uploadFile(syncBox, syncBox.getSocketHostAddress(socket), syncFile);
 				}
 			}

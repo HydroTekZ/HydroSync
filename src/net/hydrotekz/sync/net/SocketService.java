@@ -5,7 +5,6 @@ import java.net.*;
 
 import org.json.simple.JSONObject;
 
-import net.hydrotekz.sync.HydroSync;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.JsonHandler;
 import net.hydrotekz.sync.utils.Printer;
@@ -23,7 +22,7 @@ public class SocketService {
 		try {
 			listener = new ServerSocket(port);
 
-			Printer.log("Socket server started.");
+			Printer.printInfo("Socket service started.");
 			while(!listener.isClosed()){
 				Socket socket = listener.accept();
 
@@ -31,7 +30,8 @@ public class SocketService {
 
 				try {
 					DataInputStream stream = new DataInputStream(socket.getInputStream());
-					JSONObject auth = JsonHandler.getJson(stream.readUTF());
+					String utf = stream.readUTF();
+					JSONObject auth = JsonHandler.getJson(utf);
 					address = Address.toAddress(socket, auth.get("port"));
 					String cmd = (String) auth.get("cmd");
 
@@ -39,9 +39,7 @@ public class SocketService {
 						SocketConnection connection = new SocketConnection(socket, address);
 						Thread t = new Thread(connection);
 						t.start();
-
-						HydroSync.connections.put(address, socket);
-						Printer.log("Connected to " + address.toString() + "!");
+						Printer.printInfo("Connected to " + address.toString() + "!");
 
 					} else if (cmd.equals("download_file")){
 						String path = (String) auth.get("path");
@@ -55,15 +53,15 @@ public class SocketService {
 					}
 
 				} catch (Exception e){
-					Printer.debug(e);
-					Printer.log("Failed to authenticate " + address.toString() + "!");
+					Printer.logError(e);
+					Printer.printError("Failed to authenticate " + address.toString() + "!");
 					if (!socket.isClosed()) socket.close();
 				}
 			}
 
 		} catch (Exception ioe) {
-			Printer.log(ioe);
-			Printer.log("Socket service failed!");
+			Printer.printError(ioe);
+			Printer.printError("Socket service failed!");
 			System.exit(0);
 		}
 	}

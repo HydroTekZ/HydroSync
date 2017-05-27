@@ -14,7 +14,6 @@ public class SocketClient {
 	}
 
 	private static Socket socket;
-	private static long recon = 0;
 
 	// Creates a socket connection
 	public boolean connect(){
@@ -24,11 +23,11 @@ public class SocketClient {
 			SocketConnection connection = new SocketConnection(socket, address);
 			Thread t = new Thread(connection);
 			t.start();
-			Printer.log("Connected to " + address.toString() + "!");
+			Printer.printInfo("Connected to " + address.toString() + "!");
 			return true;
 
 		} catch (Exception e) {
-			Printer.log("Peer " + address.toString() + " is unreachable.");
+			Printer.printInfo("Peer " + address.toString() + " is unreachable.");
 		}
 		return false;
 	}
@@ -36,19 +35,16 @@ public class SocketClient {
 	// Recreates a socket connection
 	public boolean reconnect(){
 		try {
-			if (recon == 0 || System.currentTimeMillis() > recon){
-				socket = new Socket();
-				socket.connect(address.toInetSocketAddress(), 10000);
-				SocketConnection connection = new SocketConnection(socket, address);
-				Thread t = new Thread(connection);
-				t.start();
-				Printer.log("Successfully reconnected to " + address.toString() + "!");
-				recon = System.currentTimeMillis()+30000;
-				return true;
-			}
+			socket = new Socket();
+			socket.connect(address.toInetSocketAddress(), 10000);
+			SocketConnection connection = new SocketConnection(socket, address);
+			Thread t = new Thread(connection);
+			t.start();
+			Printer.printInfo("Successfully reconnected to " + address.toString() + "!");
+			return true;
 
 		} catch (Exception e) {
-			Printer.log("Failed to reconnect to " + address.toString() + "!");
+			Printer.printError("Failed to reconnect to " + address.toString() + ".");
 		}
 		return false;
 	}

@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.json.simple.JSONObject;
 
-import net.hydrotekz.sync.HydroSync;
+import net.hydrotekz.sync.MainCore;
 import net.hydrotekz.sync.utils.Address;
 import net.hydrotekz.sync.utils.JsonHandler;
 import net.hydrotekz.sync.utils.Printer;
@@ -16,20 +16,15 @@ public class SocketHandler {
 
 	public static void establishConnections(SyncBox syncBox){
 		// Connect to peers
-		Printer.log("Connecting to peers...");
+		Printer.printInfo("Connecting to peers...");
 		List<Address> peers = syncBox.getPeers();
 		for (Address peer : peers){
 			SocketClient client = new SocketClient(peer);
 			if (client.connect()){
 				Socket socket = client.getSocket();
 
-				// Update address
-				Address address = Address.toAddress(socket, peer.getPort());
-				syncBox.removePeer(peer);
-				syncBox.addPeer(address);
-
-				HydroSync.connections.put(peer, socket);
-				JsonHandler.sendAuth(syncBox, socket);
+				// Authenticate
+				JsonHandler.sendAuth(socket);
 			}
 		}
 
@@ -43,22 +38,19 @@ public class SocketHandler {
 		new Thread(r).start();
 	}
 
-	public static void closeConnections(){
-		// Shutdown task
-		Runtime.getRuntime().addShutdownHook(new Thread() {
-			public void run() {
-				try {
-					SocketService.stopService();
-					for (Socket peer : HydroSync.connections.values()){
-						peer.close();
-					}
-					Printer.log("Socket connections was closed.");
+	public static void reconnect(Address address){
+		Printer.printInfo("Connecting to " + address.toString() + "...");
+		SocketClient socketClient = new SocketClient(address);
+		if (socketClient.reconnect()){
+			Socket socket = socketClient.getSocket();
+			MainCore.sockets.put(address.toString(), socket);
 
-				} catch (Exception e){
-					Printer.log("Failed to close socket connections!");
-				}
-			}
-		});
+			// Authenticate
+			JsonHandler.sendAuth(socket);
+
+		} else {
+			Printer.printError("Failed to reconnect to " + address.toString() + "!");
+		}
 	}
 
 	public static boolean isConnected(Socket socket){
@@ -73,7 +65,7 @@ public class SocketHandler {
 				DataOutputStream os = new DataOutputStream(socket.getOutputStream());
 				if (os != null && !socket.isOutputShutdown() && !socket.isInputShutdown()){
 					String utf = msg.toJSONString();
-					Printer.debug("Sent: " + utf);
+					Printer.logMessage("Sent: " + utf);
 					os.writeUTF(utf);
 					return true;
 				}

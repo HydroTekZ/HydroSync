@@ -27,16 +27,16 @@ public class MainConfig {
 		try {
 			InputStream input = new FileInputStream(file);
 			Yaml yaml = new Yaml(new SafeConstructor());
-			
+
 			// Get root of config
 			Map<String, Object> root = (Map<String, Object>) yaml.load(input);
 			configRoot = root;
-			
+
 			// Load local settings
 			Map<String, Object> settings = (Map<String, Object>) getValue(root, "Settings");
 			int port = (int) getValue(settings, "Port");
 			SocketService.port = port;
-			
+
 			// Get content of sync
 			Map<String, Object> syncs = (Map<String, Object>) getValue(root, "Syncs");
 
@@ -45,7 +45,7 @@ public class MainConfig {
 				// Get entries within sync
 				String name = entry.getKey();
 				Map<String, Object> content = (Map<String, Object>) getValue(syncs, entry.getKey());
-				
+
 				// Finish and load list
 				String path = (String) getValue(content, "Path");
 				String tracker = (String) getValue(content, "Tracker");
@@ -76,8 +76,8 @@ public class MainConfig {
 			loadYAML(mainCfg);
 
 		} catch (Exception e){
-			Printer.log(e);
-			Printer.log("Failed to load config.");
+			Printer.printError(e);
+			Printer.printError("Failed to load config.");
 			System.exit(0);
 		}
 	}

@@ -22,11 +22,11 @@ public class Watcher {
 		Runnable r = new Runnable() {
 			public void run() {
 				try {
-					registerRecursive(syncBox);
+					registerRecursive(syncBox, true);
 
 				} catch (Exception e) {
-					Printer.log(e);
-					Printer.log("Watcher crashed!");
+					Printer.printError(e);
+					Printer.printError("Watcher crashed!");
 					System.exit(0);
 				}
 			}
@@ -34,12 +34,12 @@ public class Watcher {
 		new Thread(r).start();
 	}
 
-	private static void registerRecursive(SyncBox syncBox) throws Exception {
+	private static void registerRecursive(SyncBox syncBox, boolean startup) throws Exception {
 		File dir = syncBox.getFolder();
 		Path root = dir.toPath();
 		WatchService watchService = root.getFileSystem().newWatchService();
 
-		// register all subfolders
+		// Register all subfolders
 		Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
@@ -51,7 +51,9 @@ public class Watcher {
 			}
 		});
 
-		Printer.log("Watcher started.");
+		if (startup) Printer.printInfo("Watcher started.");
+		else Printer.printInfo("Watcher restarted.");
+
 		while(true){
 			// This call is blocking until events are present
 			WatchKey watchKey = watchService.take();
@@ -59,27 +61,31 @@ public class Watcher {
 
 			// Poll for file system events on the WatchKey
 			for (final WatchEvent<?> e : watchKey.pollEvents()) {
-				Path path = parent.resolve((Path)e.context());
-				File file = path.toFile();
+				Object context = e.context();
+				if (context != null && context instanceof Path){
+					Path path = parent.resolve((Path)context);
+					File file = path.toFile();
 
-				String kind = e.kind().toString();
-				SyncFile syncFile = SyncFile.toSyncFile(syncBox, file);
+					String kind = e.kind().toString();
+					SyncFile syncFile = SyncFile.toSyncFile(syncBox, file);
 
-				if (!syncFile.ignore()){
-					Printer.log("DEBUG: " + syncFile.getSyncPath() + " | " + kind);
-					if (kind.equals("ENTRY_MODIFY") || kind.equals("ENTRY_CREATE")){
-						ElementIndexer.indexElement(syncFile);
+					if (!syncFile.ignore()){
+						Printer.logDebug(syncFile.getSyncPath() + " | " + kind);
+						if (kind.equals("ENTRY_MODIFY") || kind.equals("ENTRY_CREATE")){
+							if (!syncFile.isDir() && syncFile.fileExist()) ElementIndexer.indexElement(syncFile);
 
-					} else if (kind.equals("ENTRY_DELETE")){
-						syncFile.delete(System.currentTimeMillis());
+						} else if (kind.equals("ENTRY_DELETE")){
+							syncFile.delete(System.currentTimeMillis());
+						}
 					}
 				}
 			}
 
 			if(!watchKey.reset()) {
-				Printer.log("Watch key no longer valid.");
+				Printer.printWarning("Watch key no longer valid.");
 				watchKey.cancel();
 				watchService.close();
+				registerRecursive(syncBox, false);
 				break;
 			}
 		}

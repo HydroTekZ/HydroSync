@@ -12,28 +12,37 @@ import java.util.Calendar;
 
 public class Printer {
 
-	public static void log(String message) {
+	private static void printMessage(String message) {
 		if (message == null) return;
-		try {
-			if (message.length() < 1) return;
-
-			File file = new File(System.getProperty("user.dir") + "\\" + "Logs");
-			if (!file.exists()) {
-				file.mkdirs();
-			}
-			BufferedWriter out = new BufferedWriter(new FileWriter("Logs\\" + getDate() + ".log", true));
-			out.write(getClock() + ": " + message);
-			out.newLine();
-			out.close();
-
-			System.out.println(getClock() + ": " + message);
-
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		logMessage(message);
+		System.out.println(getClock() + ": " + message);
 	}
 
-	public static void debug(String message) {
+	public static void printInfo(String message){
+		printMessage("[INFO] " + message);
+	}
+
+	public static void printDebug(String message){
+		printMessage("[DEBUG] " + message);
+	}
+
+	public static void printWarning(String message){
+		printMessage("[WARNING] " + message);
+	}
+
+	public static void logDebug(String message){
+		logMessage("[DEBUG] " + message);
+	}
+	
+	public static void logError(String message){
+		logMessage("[ERROR] " + message);
+	}
+
+	public static void printError(String message){
+		printMessage("[ERROR] " + message);
+	}
+
+	public static void logMessage(String message) {
 		if (message == null) return;
 		try {
 			if (message.length() < 1) return;
@@ -52,9 +61,8 @@ public class Printer {
 		}
 	}
 
-	public static void debug(Exception e){
-		debug("---");
-		debug(getErrorText(e));
+	public static void logError(Exception e){
+		logMessage(getErrorText(e));
 		String error = e.toString();
 		if (error.contains(".")){
 			String[] split = error.split("\\.");
@@ -62,9 +70,8 @@ public class Printer {
 		}
 	}
 
-	public static void log(Exception e){
-		log("---");
-		log(getErrorText(e));
+	public static void printError(Exception e){
+		printMessage(getErrorText(e));
 		String error = e.toString();
 		if (error.contains(".")){
 			String[] split = error.split("\\.");
@@ -72,7 +79,7 @@ public class Printer {
 		}
 	}
 
-	public static String getErrorText(Exception e){
+	private static String getErrorText(Exception e){
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);
